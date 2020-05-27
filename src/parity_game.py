@@ -44,7 +44,8 @@ class parity_game:
             else:
                 self.prio_even = self.prio_even | p[prio]
 
-    def __repr__(self):
+    # Gather data used for exporting this parity game to a dot file, or printing it
+    def get_repr_data(self):
         # Convert a SAT value to a hex string for more compact representaton
         def sat_to_hex(sat, edge=False):
             res = ""
@@ -84,7 +85,7 @@ class parity_game:
                     bytea.append(cur)
 
                 bytea.reverse()
-                res += ' ==> ' + ''.join('{:02x}'.format(x) for x in bytea)
+                res = ''.join('{:02x}'.format(x) for x in bytea)
 
             return res
 
@@ -103,10 +104,35 @@ class parity_game:
             d[2].append(sat_to_hex(e, edge=True))
             data[sat_to_hex(e)] = (d[0], d[1], d[2])
 
+        return data
+
+    def __repr__(self):
+        
+        data = self.get_repr_data()
+
         res = ""
         for h in sorted(data):
             d = data[h]
             res += h + ' ' + d[0] + ' prio: ' + str(d[1]) + ' edges: ' + (', '.join(d[2])) + '\n'
+
+        return res
+
+    def make_dot(self):
+        
+        data = self.get_repr_data()
+
+        res = "digraph parity_game {\n"
+        for h in sorted(data):
+            d = data[h]
+            res += "\t\"" + h + "\" [label=\"" + str(d[1]) + " (" + h + ")\", shape=" + ('diamond' if d[0] == 'Even' else 'box') + "];\n"
+
+        for h in sorted(data):
+            d = data[h]
+            #for e in d[2]:
+            #    res += "\t\"" + h + "\" -> \"" + e + "\"\n"
+            res += "\t\"" + h + "\" -> {" + (', '.join([ "\"" + x + "\"" for x in d[2] ])) + "};\n"
+
+        res += "\n}"
 
         return res
 

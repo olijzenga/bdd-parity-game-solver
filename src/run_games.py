@@ -65,5 +65,6 @@ for Size_of_Games in RANGE:
       print("Zielonka:\nW0:" + str([sat for sat in pg_zlk.bdd.pick_iter(W0)]) + "\nW1:" + str([sat for sat in pg_zlk.bdd.pick_iter(W1)]) + "\n")
       print("DFI:\nW0:" + str([sat for sat in pg_dfi.bdd.pick_iter(W0_)]) + "\nW1:" + str([sat for sat in pg_dfi.bdd.pick_iter(W1_)]) + "\n")
       print("Game:\n" + str(pg))
+      print("Dot:\n" + pg.make_dot())
       sys. exit()
 

@@ -44,7 +44,7 @@ def onestep_0(z: BDD, pg: parity_game):
 
 def onestep_1(z: BDD, pg: parity_game):
     # Edges which end in the winning area of Odd
-    odd_pre = preimage(even(z, pg), pg)
+    odd_pre = preimage(odd(z, pg), pg)
 
     return ((pg.even & pg.bdd.quantify(odd_pre, pg.variables, forall=True))
         | (pg.odd & pg.bdd.quantify(odd_pre, pg.variables, forall=False)))
