@@ -44,17 +44,34 @@ class parity_game:
             else:
                 self.prio_even = self.prio_even | p[prio]
 
-    # Gather data used for exporting this parity game to a dot file, or printing it
-    def get_repr_data(self):
-        # Convert a SAT value to a hex string for more compact representaton
-        def sat_to_hex(sat, edge=False):
-            res = ""
+    # Convert a SAT value to a hex string for more compact representaton
+    def sat_to_hex(self, sat, edge=False):
+        res = ""
 
+        bytea = []
+        pos = 0
+        cur = 0
+        for var in self.variables:
+            if(sat[var]):
+                cur += pow(2,pos)
+            if pos == 7:
+                bytea.append(cur)
+                cur = 0
+                pos = 0
+            else:
+                pos += 1
+        if pos != 0:
+            bytea.append(cur)
+
+        bytea.reverse()
+        res += ''.join('{:02x}'.format(x) for x in bytea)
+
+        if edge:
             bytea = []
             pos = 0
             cur = 0
-            for var in self.variables:
-                if((var in sat) and (sat[var])):
+            for var in self.variables_:
+                if(sat[var]):
                     cur += pow(2,pos)
                 if pos == 7:
                     bytea.append(cur)
@@ -66,43 +83,32 @@ class parity_game:
                 bytea.append(cur)
 
             bytea.reverse()
-            res += ''.join('{:02x}'.format(x) for x in bytea)
+            res = ''.join('{:02x}'.format(x) for x in bytea)
 
-            if edge:
-                bytea = []
-                pos = 0
-                cur = 0
-                for var in self.variables_:
-                    if(sat[var]):
-                        cur += 2^pos
-                    if pos == 7:
-                        bytea.append(cur)
-                        cur = 0
-                        pos = 0
-                    else:
-                        pos += 1
-                if pos != 0:
-                    bytea.append(cur)
+        return res
 
-                bytea.reverse()
-                res = ''.join('{:02x}'.format(x) for x in bytea)
+    def bdd_sat(self, bdd: BDD, edge=False):
+        return ', '.join([self.sat_to_hex(sat, edge=edge) for sat in self.bdd.pick_iter(bdd, self.variables)])
 
-            return res
-
+    # Gather data used for exporting this parity game to a dot file, or printing it
+    def get_repr_data(self):
         data = {}
 
         for v_0 in self.bdd.pick_iter(self.even, care_vars=self.variables):
-            data[sat_to_hex(v_0)] = ('Even', None, [])
+            data[self.sat_to_hex(v_0)] = ('Even', None, [])
         for v_1 in self.bdd.pick_iter(self.odd, care_vars=self.variables):
-            data[sat_to_hex(v_1)] = ('Odd ', None, [])
+            data[self.sat_to_hex(v_1)] = ('Odd ', None, [])
         for prio in self.p:
             for v in self.bdd.pick_iter(self.p[prio], care_vars=self.variables):
-                d = data[sat_to_hex(v)]
-                data[sat_to_hex(v)] = (d[0], prio, [])
-        for e in self.bdd.pick_iter(self.v & self.e):
-            d = data[sat_to_hex(e)]
-            d[2].append(sat_to_hex(e, edge=True))
-            data[sat_to_hex(e)] = (d[0], d[1], d[2])
+                d = data[self.sat_to_hex(v)]
+                data[self.sat_to_hex(v)] = (d[0], prio, [])
+        for e in self.bdd.pick_iter(self.e, care_vars=(self.variables + self.variables_)):
+            #print(e)
+            d = data[self.sat_to_hex(e)]
+            #print(self.sat_to_hex(e))
+            #print(self.sat_to_hex(e, edge=True))
+            d[2].append(self.sat_to_hex(e, edge=True))
+            data[self.sat_to_hex(e)] = (d[0], d[1], d[2])
 
         return data
 
@@ -117,7 +123,7 @@ class parity_game:
 
         return res
 
-    def make_dot(self):
+    def make_dot(self, filename):
         
         data = self.get_repr_data()
 
@@ -134,7 +140,8 @@ class parity_game:
 
         res += "\n}"
 
-        return res
+        with open(filename, "w") as text_file:
+            print(res, file=text_file)
 
     def copy(self):
         c = parity_game(self.bdd, self.variables, self.variables_, self.v, self.e, self.even, self.odd, self.p)
