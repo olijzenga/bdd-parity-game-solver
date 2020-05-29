@@ -20,11 +20,12 @@
 
 from random_parity_game_generator import random_game
 from parity_game import parity_game
-from dfi import dfi_no_freeze
+from dfi import dfi
 from zlk import zlk
 from time import process_time
 import sys, os, random, math
 from graphviz import Source
+from dd.autoref import BDD
 
 debug = False
 RANGE = range(3,35)
@@ -55,16 +56,19 @@ for Size_of_Games in RANGE:
 
     # solve game using DFI
     dfi_solver_start = process_time()
-    (W0_,W1_) = dfi_no_freeze(pg_dfi)
+    (W0_,W1_) = dfi(pg_dfi)
     dfi_solver_end = process_time()
     dfi_total_time = dfi_total_time + (dfi_solver_end - dfi_solver_start)
     pg.bdd.collect_garbage()
 
+    def bdd_sat_to_text(bdd: BDD, pg: parity_game):
+      return str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)])
+
     # sanity checks
-    if W0 != W0_:
+    if (W0 != W0_) | True:
       print("Error: difference in outcome between Zielonka and DFI")
-      print("Zielonka:\nW0:" + str([pg.sat_to_hex(sat) for sat in pg_zlk.bdd.pick_iter(W0)]) + "\nW1:" + str([pg.sat_to_hex(sat) for sat in pg_zlk.bdd.pick_iter(W1)]) + "\n")
-      print("DFI:\nW0:" + str([pg.sat_to_hex(sat) for sat in pg_dfi.bdd.pick_iter(W0_)]) + "\nW1:" + str([pg.sat_to_hex(sat) for sat in pg_dfi.bdd.pick_iter(W1_)]) + "\n")
+      print("Zielonka:\nW0:" + bdd_sat_to_text(W0, pg_zlk) + "\nW1:" + bdd_sat_to_text(W1, pg_zlk) + "\n")
+      print("DFI:\nW0:" + bdd_sat_to_text(W0_, pg_dfi) + "\nW1:" + bdd_sat_to_text(W1_, pg_dfi) + "\n")
       print("Game:\n" + str(pg))
 
       pg.make_dot("output/pg.dot")
@@ -72,4 +76,3 @@ for Size_of_Games in RANGE:
         s = Source(text_file.read(), filename="output/dot.png", format="png")
         s.view()
       sys. exit()
-

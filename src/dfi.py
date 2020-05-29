@@ -11,7 +11,7 @@ def dfi(pg: parity_game):
 
     while p <= pg.d:
 
-        print("Iteration " + str(i) + ":\n  Priority " + str(p) + "\n  Distractions: " + str([sat for sat in pg.bdd.pick_iter(z)]))
+        print("Iteration " + str(i) + ":\n  Priority " + str(p) + "\n  Distractions: " + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables)]))
         i += 1
 
         player = p % 2
@@ -19,9 +19,9 @@ def dfi(pg: parity_game):
         v_p = pg.p[p]
         change = False
 
-        for v in [ sat for sat in pg.bdd.pick_iter(v_p & ~z)]:
+        for v in [ sat for sat in pg.bdd.pick_iter(v_p & ~z, care_vars=pg.variables)]:
             v_expr = pg.bdd.add_expr(sat_to_expr(v))
-            (player_, move) = onestep(v, z, pg.bdd)
+            (player_, move) = onestep(v, z, pg)
             # Remove previous strategies, and add new one (this would also work if move contains multiple vertices)
             s = (s & ~ v_expr)
             if move: s = s | (v_expr & pg.bdd.let(pg.substitution_list, move))
@@ -30,7 +30,7 @@ def dfi(pg: parity_game):
                 change = True
         
         if change:
-            for v in [ sat for sat in pg.bdd.pick_iter(prio_lt(p, pg.p, pg) & f_none(f, pg)) ]:
+            for v in [ sat for sat in pg.bdd.pick_iter(prio_lt(p, pg.p, pg) & f_none(f, pg), care_vars=pg.variables) ]:
                 if winner(v, z, pg) == opponent:
                     f[p] = f[p] | pg.bdd.add_expr(sat_to_expr(v))
                 else:
@@ -55,16 +55,18 @@ def winner(sat: dict, z: BDD, pg: parity_game):
     return 0 if (v & even(z, pg)) == pg.bdd.true else 1
 
 def onestep(v: dict, z: BDD, pg: parity_game):
-    player = 0 if pg.bdd.quantify(pg.bdd.let(v, pg.even), pg.variables, forall=False) == pg.bdd.true else 1
-
+    player = 0 if pg.bdd.quantify(pg.bdd.add_expr(sat_to_expr(v)) & pg.even, pg.variables, forall=False) == pg.bdd.true else 1
+    print("player: " + str(player))
     if player == 0:
-        succ = pg.bdd.let(v, pg.e) & pg.bdd.let(pg.substitution_list, even(z, pg))
+        succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg))
     else:
-        succ = pg.bdd.let(v, pg.e) & pg.bdd.let(pg.substitution_list, odd(z, pg))
-    
-    if pg.bdd.quantify(succ, pg.variables, forall=False) == pg.bdd.true: 
+        succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg))
+    print("Successors: " + str([ pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(succ, care_vars=(pg.variables + pg.variables_))]))
+    if pg.bdd.quantify(succ, (pg.variables + pg.variables_), forall=False) == pg.bdd.true:
+        print("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(player))
         return player, succ
 
+    print("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(1 - player))
     return 1 - player, None
 
 def onestep_0(z: BDD, pg: parity_game):
