@@ -163,7 +163,6 @@ class parity_game:
             U = U_next
             U_next = self.successor(U)
             i = i +1
-            print('  at level %d' %(i))
         return U_next
 
     def predecessor (self, player, U):

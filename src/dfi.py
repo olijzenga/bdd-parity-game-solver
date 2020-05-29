@@ -1,5 +1,6 @@
 from dd.autoref import BDD
 from parity_game import parity_game, sat_to_expr
+import logging
 
 def dfi(pg: parity_game):
     
@@ -11,7 +12,7 @@ def dfi(pg: parity_game):
 
     while p <= pg.d:
 
-        print("Iteration " + str(i) + ":\n  Priority " + str(p) + "\n  Distractions: " + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables)]))
+        logging.debug("Iteration " + str(i) + ":\n  Priority " + str(p) + "\n  Distractions: " + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables)]))
         i += 1
 
         player = p % 2
@@ -56,17 +57,17 @@ def winner(sat: dict, z: BDD, pg: parity_game):
 
 def onestep(v: dict, z: BDD, pg: parity_game):
     player = 0 if pg.bdd.quantify(pg.bdd.add_expr(sat_to_expr(v)) & pg.even, pg.variables, forall=False) == pg.bdd.true else 1
-    print("player: " + str(player))
+    logging.debug("player: " + str(player))
     if player == 0:
         succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg))
     else:
         succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg))
-    print("Successors: " + str([ pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(succ, care_vars=(pg.variables + pg.variables_))]))
+    logging.debug("Successors: " + str([ pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(succ, care_vars=(pg.variables + pg.variables_))]))
     if pg.bdd.quantify(succ, (pg.variables + pg.variables_), forall=False) == pg.bdd.true:
-        print("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(player))
+        logging.debug("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(player))
         return player, succ
 
-    print("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(1 - player))
+    logging.debug("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(1 - player))
     return 1 - player, None
 
 def onestep_0(z: BDD, pg: parity_game):
@@ -82,13 +83,13 @@ def onestep_1(z: BDD, pg: parity_game):
     o = odd(z, pg)
     odd_pre = preimage(o, pg)
 
-    print("Odd: {0}".format(pg.bdd_sat(o)))
-    print("preimage(odd(z)): {0}".format(pg.bdd_sat(odd_pre)))
+    logging.debug("Odd: {0}".format(pg.bdd_sat(o)))
+    logging.debug("preimage(odd(z)): {0}".format(pg.bdd_sat(odd_pre)))
 
     res = (pg.even & ~(pg.bdd.quantify(odd_pre & pg.even, pg.variables, forall=False))
         | (pg.bdd.quantify(odd_pre & pg.odd, pg.variables, forall=False)))
 
-    print("Res: {0}".format(pg.bdd_sat(res)))
+    logging.debug("Res: {0}".format(pg.bdd_sat(res)))
 
     return res
 

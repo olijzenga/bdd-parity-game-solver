@@ -1,5 +1,6 @@
 from dd.autoref import BDD
 from parity_game import sat_to_expr
+import sys
 
 bdd = BDD()
 bdd.declare('x', 'y', 'z', 'w')

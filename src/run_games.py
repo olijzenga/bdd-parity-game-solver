@@ -26,32 +26,38 @@ from time import process_time
 import sys, os, random, math
 from graphviz import Source
 from dd.autoref import BDD
+from math import floor
+import logging
 
-debug = False
-RANGE = range(3,35)
-REPEAT_EXPERIMENTS = 1
+s = os.environ.get('LOG_LEVEL', 'INFO')
+if s == 'DEBUG': log_level = logging.DEBUG
+elif s == 'INFO': log_level = logging.INFO
+else: log_level = logging.INFO
+
+logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
+
+game_sizes_range = range(3,35)
+games_per_size = 20
 
 #generate games with size (nr. Booleans) in range(3,35):
-for Size_of_Games in RANGE:
-  zielonka_total_time = 0.0
+for game_size in game_sizes_range:
+  zlk_total_time = 0.0
   dfi_total_time = 0.0
-  solved_games =0
-  PrioLimit = math.floor(math.sqrt(2*Size_of_Games))
-  print()
-  print('Solving games with %d variables and at most %d priorities' %(Size_of_Games, PrioLimit))
-  for iteration in range(0, REPEAT_EXPERIMENTS):
-    pg = random_game(Size_of_Games,PrioLimit, 6,False,False)
+  d = math.floor(math.sqrt(2*game_size))
+  for iteration in range(0, games_per_size):
+    pg = random_game(game_size, d, 4, False, False)
 
     pg_zlk = pg.copy()
     pg_dfi = pg.copy()
     pg.bdd.collect_garbage()
+    pg_zlk.bdd.collect_garbage()
+    pg_dfi.bdd.collect_garbage()
 
     # solve game using zielonka
-    zielonka_solver_start = process_time()
+    zlk_solver_start = process_time()
     (W0,W1) = zlk(pg_zlk)
-    solved_games += 1
-    zielonka_solver_end = process_time()
-    zielonka_total_time = zielonka_total_time + (zielonka_solver_end - zielonka_solver_start)
+    zlk_solver_end = process_time()
+    zlk_total_time += zlk_solver_end - zlk_solver_start
     pg.bdd.collect_garbage()
 
     # solve game using DFI
@@ -61,15 +67,29 @@ for Size_of_Games in RANGE:
     dfi_total_time = dfi_total_time + (dfi_solver_end - dfi_solver_start)
     pg.bdd.collect_garbage()
 
+    if iteration != 0:
+      #print("yeet")
+      sys.stdout.write("\033[F") #back to previous line
+      sys.stdout.write("\033[K") #clear line
+      sys.stdout.write("\033[F") #back to previous line
+      sys.stdout.write("\033[K") #clear line
+
+    nr_vertices_ = str(pow(2, game_size)).rjust(5)
+    d_ = str(d).rjust(5)
+    iteration_ = str(iteration).rjust(5)
+    zlk_total_time_ = str(floor(zlk_total_time)).rjust(10)
+    dfi_total_time_ = str(floor(dfi_total_time)).rjust(10)
+    logging.info("|V| = {0} d = {1} | game {2} | zlk time: {3} | dfi time: {4}".format(nr_vertices_, d_, iteration_, zlk_total_time_, dfi_total_time_))
+
     def bdd_sat_to_text(bdd: BDD, pg: parity_game):
       return str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)])
 
     # sanity checks
-    if (W0 != W0_) | True:
-      print("Error: difference in outcome between Zielonka and DFI")
-      print("Zielonka:\nW0:" + bdd_sat_to_text(W0, pg_zlk) + "\nW1:" + bdd_sat_to_text(W1, pg_zlk) + "\n")
-      print("DFI:\nW0:" + bdd_sat_to_text(W0_, pg_dfi) + "\nW1:" + bdd_sat_to_text(W1_, pg_dfi) + "\n")
-      print("Game:\n" + str(pg))
+    if (W0 != W0_):
+      logging.error("Error: difference in outcome between Zielonka and DFI")
+      logging.error("Zielonka:\nW0:" + bdd_sat_to_text(W0, pg_zlk) + "\nW1:" + bdd_sat_to_text(W1, pg_zlk) + "\n")
+      logging.error("DFI:\nW0:" + bdd_sat_to_text(W0_, pg_dfi) + "\nW1:" + bdd_sat_to_text(W1_, pg_dfi) + "\n")
+      logging.error("Game:\n" + str(pg))
 
       pg.make_dot("output/pg.dot")
       with open("output/pg.dot", "r") as text_file:
