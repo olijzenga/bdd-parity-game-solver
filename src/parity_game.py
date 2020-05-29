@@ -103,10 +103,7 @@ class parity_game:
                 d = data[self.sat_to_hex(v)]
                 data[self.sat_to_hex(v)] = (d[0], prio, [])
         for e in self.bdd.pick_iter(self.e, care_vars=(self.variables + self.variables_)):
-            #print(e)
             d = data[self.sat_to_hex(e)]
-            #print(self.sat_to_hex(e))
-            #print(self.sat_to_hex(e, edge=True))
             d[2].append(self.sat_to_hex(e, edge=True))
             data[self.sat_to_hex(e)] = (d[0], d[1], d[2])
 
@@ -226,3 +223,7 @@ class parity_game:
         p_ = { i : self.p[i] & ~A for i in self.p if self.p[i] & ~A != self.bdd.false}
         self.p = p_
         self.bdd.collect_garbage()
+
+# Convert a variable assignment to a boolean expression
+def sat_to_expr(sat: dict):
+    return '&'.join([ var if sat[var] else ('~' + var) for var in sat.keys() ])

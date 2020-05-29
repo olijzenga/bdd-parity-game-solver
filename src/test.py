@@ -1,4 +1,5 @@
 from dd.autoref import BDD
+from parity_game import sat_to_expr
 
 bdd = BDD()
 bdd.declare('x', 'y', 'z', 'w')
@@ -57,3 +58,7 @@ print("\n\n\n")
 bdd.declare('x', 'y')
 expr = bdd.add_expr('x \/ y')
 for sat in bdd.pick_iter(bdd.quantify(expr, ['x'], forall=True), care_vars=['x', 'y']): print(sat)
+
+sat = { 'x': True, 'y': False }
+
+print(sat_to_expr({ 'x': True, 'y': False }))

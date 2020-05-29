@@ -1,9 +1,11 @@
 from dd.autoref import BDD
-from parity_game import parity_game
+from parity_game import parity_game, sat_to_expr
 
-def dfi_no_freeze(pg: parity_game):
+def dfi(pg: parity_game):
     
-    z = pg.bdd.add_expr('False')        # No vertices are distractions
+    z = pg.bdd.add_expr('False')                    # No vertices are distractions
+    f = { p : pg.bdd.false for p in pg.p.keys() }   # No vertices are frozen
+    s = pg.bdd.false                                # Contains all edges of the winning strategy
     p = 0
     i = 0
 
@@ -15,25 +17,55 @@ def dfi_no_freeze(pg: parity_game):
         player = p % 2
         opponent = 1 - player
         v_p = pg.p[p]
-        v = v_p & ~z
-        new_distractions = v & onestep(opponent, z, pg)
-        new_distractions_sat = [ sat for sat in pg.bdd.pick_iter(new_distractions) ]
-        print("  New distractions: " + str(new_distractions_sat))
+        change = False
+
+        for v in [ sat for sat in pg.bdd.pick_iter(v_p & ~z)]:
+            v_expr = pg.bdd.add_expr(sat_to_expr(v))
+            (player_, move) = onestep(v, z, pg.bdd)
+            # Remove previous strategies, and add new one (this would also work if move contains multiple vertices)
+            s = (s & ~ v_expr)
+            if move: s = s | (v_expr & pg.bdd.let(pg.substitution_list, move))
+            if player_ != player:
+                z = z | v_expr
+                change = True
         
-        if new_distractions_sat:
-            z = (z | new_distractions) & ~(prio_lt(p, pg.p, pg))
+        if change:
+            for v in [ sat for sat in pg.bdd.pick_iter(prio_lt(p, pg.p, pg) & f_none(f, pg)) ]:
+                if winner(v, z, pg) == opponent:
+                    f[p] = f[p] | pg.bdd.add_expr(sat_to_expr(v))
+                else:
+                    z = z & ~pg.bdd.add_expr(sat_to_expr(v))
             p = 0
         else:
+            # forall v in V_<p: F[v]=p: F[v] <- -
+            f[p] = f[p] & ~(prio_lt(p, pg.p, pg) & f[p])
             p += 1
 
-    w_0 = (pg.even & ~z) | (pg.odd & z)
-    return w_0, (pg.v & ~w_0)
+    return even(z, pg), odd(z, pg)
 
-def onestep(player: int, z: BDD, pg: parity_game):
-    if(player == 0):
-        return onestep_0(z, pg)
+# Returns a bdd of all vertices which are not frozen
+def f_none(f: dict, pg: parity_game):
+    res = pg.bdd.true
+    for p in f:
+        res = res & ~f[p]
+    return res
+
+def winner(sat: dict, z: BDD, pg: parity_game):
+    v = pg.bdd.add_expr(sat_to_expr(sat))
+    return 0 if (v & even(z, pg)) == pg.bdd.true else 1
+
+def onestep(v: dict, z: BDD, pg: parity_game):
+    player = 0 if pg.bdd.quantify(pg.bdd.let(v, pg.even), pg.variables, forall=False) == pg.bdd.true else 1
+
+    if player == 0:
+        succ = pg.bdd.let(v, pg.e) & pg.bdd.let(pg.substitution_list, even(z, pg))
     else:
-        return onestep_1(z, pg)
+        succ = pg.bdd.let(v, pg.e) & pg.bdd.let(pg.substitution_list, odd(z, pg))
+    
+    if pg.bdd.quantify(succ, pg.variables, forall=False) == pg.bdd.true: 
+        return player, succ
+
+    return 1 - player, None
 
 def onestep_0(z: BDD, pg: parity_game):
     # Edges which end in the winning area of Even
