@@ -12,11 +12,15 @@ def dfi(pg: parity_game):
 
     while p <= pg.d:
 
-        logging.debug("Iteration " + str(i) + ":\n  Priority " + str(p) + "\n  Distractions: " + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables)]))
+        logging.debug(
+            "Iteration " + str(i) + 
+            ":\n  Priority " + str(p) + 
+            "\n  Distractions: " + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables)]) +
+            "\n  Frozen vertices:\n    " + str('\n    '.join([ str(p) + ': ' + str([ pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(f[p], care_vars=pg.variables)]) for p in f.keys() ]))
+        )
         i += 1
 
         player = p % 2
-        opponent = 1 - player
         v_p = pg.p[p]
         change = False
 
@@ -32,9 +36,10 @@ def dfi(pg: parity_game):
         
         if change:
             v = prio_lt(p, pg.p, pg) & f_none(f, pg)
+            logging.debug("non-frozen vertices with prio lower than {0}: {1}".format(p, pg.bdd_sat(v)))
             winning = (v & even(z, pg)) if player == 0 else (v & odd(z, pg))
-            f[p] = f[p] | ~winning
-            z = z & ~winning
+            f[p] = (v & ~winning) | f[p]
+            z = (~winning) & z
             p = 0
         else:
             # forall v in V_<p: F[v]=p: F[v] <- -
@@ -107,10 +112,9 @@ def prio_lt(prio: int, p: dict, pg: parity_game):
     """
 
     bdd = pg.bdd.add_expr('False')
-    for current in sorted(p):
-        if current >= prio:
-            return bdd
-
-        bdd = bdd | p[current]
+    for current in p.keys():
+        if current < prio:
+            bdd = bdd | p[current]
+            logging.debug("prio " + str(current))
 
     return bdd

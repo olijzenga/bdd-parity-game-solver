@@ -1,4 +1,5 @@
 from dd.autoref import BDD
+from graphviz import Source
 
 class parity_game:
 
@@ -91,6 +92,12 @@ class parity_game:
             res = ''.join('{:02x}'.format(x) for x in bytea)
 
         return res
+
+    def show(self):
+        self.make_dot("output/pg.dot")
+        with open("output/pg.dot", "r") as text_file:
+            s = Source(text_file.read(), filename="output/dot.png", format="png")
+            s.view()
 
     def bdd_sat(self, bdd: BDD, edge=False):
         return ', '.join([self.sat_to_hex(sat, edge=edge) for sat in self.bdd.pick_iter(bdd, self.variables)])

@@ -24,10 +24,10 @@ from dfi import dfi
 from zlk import zlk
 from time import process_time
 import sys, os, random, math
-from graphviz import Source
 from dd.autoref import BDD
 from math import floor
 import logging
+import cProfile, pstats
 
 s = os.environ.get('LOG_LEVEL', 'INFO')
 if s == 'DEBUG': log_level = logging.DEBUG
@@ -35,9 +35,11 @@ elif s == 'INFO': log_level = logging.INFO
 else: log_level = logging.INFO
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
+profiler = cProfile.Profile()
+do_profiling = False
 
-game_sizes_range = range(3,35)
-games_per_size = 20
+game_sizes_range = range(5,35)
+games_per_size = 5000
 
 #generate games with size (nr. Booleans) in range(3,35):
 for game_size in game_sizes_range:
@@ -61,31 +63,38 @@ for game_size in game_sizes_range:
     pg.bdd.collect_garbage()
 
     # solve game using DFI
+    if do_profiling:
+      profiler.enable()
     dfi_solver_start = process_time()
-    (W0_,W1_) = dfi(pg_dfi)
+    (W0_,W1_, _, _) = dfi(pg_dfi)
     dfi_solver_end = process_time()
-    dfi_total_time = dfi_total_time + (dfi_solver_end - dfi_solver_start)
+    if do_profiling:
+      profiler.disable()
+    dfi_total_time += dfi_solver_end - dfi_solver_start
     pg.bdd.collect_garbage()
 
     nr_vertices_ = str(pow(2, game_size)).rjust(5)
     d_ = str(d).rjust(5)
     iteration_ = str(iteration).rjust(5)
-    zlk_total_time_ = str(floor(zlk_total_time)).rjust(10)
-    dfi_total_time_ = str(floor(dfi_total_time)).rjust(10)
+    zlk_total_time_ = ("%10.3f"%zlk_total_time).rjust(10)
+    dfi_total_time_ = ("%10.3f"%dfi_total_time).rjust(10)
     logging.info("|V| = {0} d = {1} | game {2} | zlk time: {3} | dfi time: {4}".format(nr_vertices_, d_, iteration_, zlk_total_time_, dfi_total_time_))
 
-    def bdd_sat_to_text(bdd: BDD, pg: parity_game):
-      return str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)])
+    def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
+      return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
 
     # sanity checks
     if (W0 != W0_):
       logging.error("Error: difference in outcome between Zielonka and DFI")
-      logging.error("Zielonka:\nW0:" + bdd_sat_to_text(W0, pg_zlk) + "\nW1:" + bdd_sat_to_text(W1, pg_zlk) + "\n")
-      logging.error("DFI:\nW0:" + bdd_sat_to_text(W0_, pg_dfi) + "\nW1:" + bdd_sat_to_text(W1_, pg_dfi) + "\n")
+      logging.error("Zielonka:\nW0:" + str(bdd_sat_to_hex(W0, pg_zlk)) + "\nW1:" + str(bdd_sat_to_hex(W1, pg_zlk)) + "\n")
+      logging.error("DFI:\nW0:" + str(bdd_sat_to_hex(W0_, pg_dfi)) + "\nW1:" + str(bdd_sat_to_hex(W1_, pg_dfi)) + "\n")
+      logging.error("Difference: " + str(set(bdd_sat_to_hex(W0_, pg_dfi)).symmetric_difference(set(bdd_sat_to_hex(W0, pg_zlk)))))
       logging.error("Game:\n" + str(pg))
 
-      pg.make_dot("output/pg.dot")
-      with open("output/pg.dot", "r") as text_file:
-        s = Source(text_file.read(), filename="output/dot.png", format="png")
-        s.view()
+      pg.show()
       sys. exit()
+
+  if do_profiling:
+    stats = pstats.Stats(profiler, stream=sys.stdout)
+    stats.sort_stats('time')
+    stats.print_stats()
