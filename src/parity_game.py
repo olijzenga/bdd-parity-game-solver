@@ -44,6 +44,11 @@ class parity_game:
             else:
                 self.prio_even = self.prio_even | p[prio]
 
+        # Add empty priority BDDs for priorities which have to vertices
+        for prio in range(0, self.d):
+            if prio not in p:
+                p[prio] = bdd.false
+
     # Convert a SAT value to a hex string for more compact representaton
     def sat_to_hex(self, sat, edge=False):
         res = ""

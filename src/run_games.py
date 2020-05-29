@@ -67,13 +67,6 @@ for game_size in game_sizes_range:
     dfi_total_time = dfi_total_time + (dfi_solver_end - dfi_solver_start)
     pg.bdd.collect_garbage()
 
-    if iteration != 0:
-      #print("yeet")
-      sys.stdout.write("\033[F") #back to previous line
-      sys.stdout.write("\033[K") #clear line
-      sys.stdout.write("\033[F") #back to previous line
-      sys.stdout.write("\033[K") #clear line
-
     nr_vertices_ = str(pow(2, game_size)).rjust(5)
     d_ = str(d).rjust(5)
     iteration_ = str(iteration).rjust(5)
