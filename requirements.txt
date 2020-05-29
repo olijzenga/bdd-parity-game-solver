@@ -10,7 +10,6 @@ networkx==2.4
 ply==3.10
 psutil==5.7.0
 pydot==1.4.1
-pyeda==0.28.0
 pylint==2.5.2
 pyparsing==2.4.7
 six==1.15.0
