@@ -37,17 +37,26 @@ def onestep(player: int, z: BDD, pg: parity_game):
 
 def onestep_0(z: BDD, pg: parity_game):
     # Edges which end in the winning area of Even
-    even_pre = preimage(even(z, pg), pg)
+    e = even(z, pg)
+    even_pre = preimage(e, pg)
 
     return ((pg.even & pg.bdd.quantify(even_pre, pg.variables, forall=False))
         | (pg.odd & pg.bdd.quantify(even_pre, pg.variables, forall=True)))
 
 def onestep_1(z: BDD, pg: parity_game):
     # Edges which end in the winning area of Odd
-    odd_pre = preimage(odd(z, pg), pg)
+    o = odd(z, pg)
+    odd_pre = preimage(o, pg)
 
-    return ((pg.even & pg.bdd.quantify(odd_pre, pg.variables, forall=True))
-        | (pg.odd & pg.bdd.quantify(odd_pre, pg.variables, forall=False)))
+    print("Odd: {0}".format(pg.bdd_sat(o)))
+    print("preimage(odd(z)): {0}".format(pg.bdd_sat(odd_pre)))
+
+    res = (pg.even & ~(pg.bdd.quantify(odd_pre & pg.even, pg.variables, forall=False))
+        | (pg.bdd.quantify(odd_pre & pg.odd, pg.variables, forall=False)))
+
+    print("Res: {0}".format(pg.bdd_sat(res)))
+
+    return res
 
 def even(z: BDD, pg: parity_game):
     return (pg.prio_even & ~z) | (pg.prio_odd & z)

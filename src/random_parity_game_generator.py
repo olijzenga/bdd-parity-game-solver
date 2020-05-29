@@ -140,6 +140,7 @@ def random_game(n,k,j,debug=False,selfloops=True):
     Even = bdd.add_expr(E)
     Odd = bdd.add_expr(O)
     Edges = bdd.add_expr(Ed)
+    print(Ed)
     return parity_game(bdd, variables, variables_, Vertices, Edges, Even, Odd, Priorities)
 
 

@@ -31,3 +31,29 @@ d = bdd.pick(u)
 sat = [d for d in bdd.pick_iter(u)]
 print(sat)
 n = bdd.count(u)
+
+print("\n\n\n\n")
+
+bdd = BDD()
+
+bdd.declare('x0', 'x1', 'x0_', 'x1_')
+
+e = bdd.add_expr('x0&(~x0_|x0_)&(x1<=>x1_)')
+
+res = [ sat for sat in bdd.pick_iter(e, care_vars=['x0', 'x1', 'x0_', 'x1_']) ]
+print(res)
+
+v = bdd.add_expr('x0/\(~x1)')
+
+image = v & e
+img_ = bdd.pick_iter(image, care_vars=['x0', 'x1', 'x0_', 'x1_'])
+img = bdd.quantify(image, ['x0', 'x1'], forall=False)
+
+for sat in bdd.pick_iter(img, care_vars=['x0_', 'x1_']): print(sat)
+print("\n")
+for sat in bdd.pick_iter(bdd.let({'x0_':'x0', 'x1_':'x1'}, img), care_vars=['x0', 'x1']): print(sat)
+
+print("\n\n\n")
+bdd.declare('x', 'y')
+expr = bdd.add_expr('x \/ y')
+for sat in bdd.pick_iter(bdd.quantify(expr, ['x'], forall=True), care_vars=['x', 'y']): print(sat)

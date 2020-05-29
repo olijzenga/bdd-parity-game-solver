@@ -24,6 +24,7 @@ from dfi import dfi_no_freeze
 from zlk import zlk
 from time import process_time
 import sys, os, random, math
+from graphviz import Source
 
 debug = False
 RANGE = range(3,35)
@@ -38,7 +39,7 @@ for Size_of_Games in RANGE:
   print()
   print('Solving games with %d variables and at most %d priorities' %(Size_of_Games, PrioLimit))
   for iteration in range(0, REPEAT_EXPERIMENTS):
-    pg = random_game(Size_of_Games,PrioLimit, 4,False,False)
+    pg = random_game(Size_of_Games,PrioLimit, 6,False,False)
 
     pg_zlk = pg.copy()
     pg_dfi = pg.copy()
@@ -62,9 +63,13 @@ for Size_of_Games in RANGE:
     # sanity checks
     if W0 != W0_:
       print("Error: difference in outcome between Zielonka and DFI")
-      print("Zielonka:\nW0:" + str([sat for sat in pg_zlk.bdd.pick_iter(W0)]) + "\nW1:" + str([sat for sat in pg_zlk.bdd.pick_iter(W1)]) + "\n")
-      print("DFI:\nW0:" + str([sat for sat in pg_dfi.bdd.pick_iter(W0_)]) + "\nW1:" + str([sat for sat in pg_dfi.bdd.pick_iter(W1_)]) + "\n")
+      print("Zielonka:\nW0:" + str([pg.sat_to_hex(sat) for sat in pg_zlk.bdd.pick_iter(W0)]) + "\nW1:" + str([pg.sat_to_hex(sat) for sat in pg_zlk.bdd.pick_iter(W1)]) + "\n")
+      print("DFI:\nW0:" + str([pg.sat_to_hex(sat) for sat in pg_dfi.bdd.pick_iter(W0_)]) + "\nW1:" + str([pg.sat_to_hex(sat) for sat in pg_dfi.bdd.pick_iter(W1_)]) + "\n")
       print("Game:\n" + str(pg))
-      print("Dot:\n" + pg.make_dot())
+
+      pg.make_dot("output/pg.dot")
+      with open("output/pg.dot", "r") as text_file:
+        s = Source(text_file.read(), filename="output/dot.png", format="png")
+        s.view()
       sys. exit()
 
