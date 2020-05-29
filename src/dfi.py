@@ -31,18 +31,17 @@ def dfi(pg: parity_game):
                 change = True
         
         if change:
-            for v in [ sat for sat in pg.bdd.pick_iter(prio_lt(p, pg.p, pg) & f_none(f, pg), care_vars=pg.variables) ]:
-                if winner(v, z, pg) == opponent:
-                    f[p] = f[p] | pg.bdd.add_expr(sat_to_expr(v))
-                else:
-                    z = z & ~pg.bdd.add_expr(sat_to_expr(v))
+            v = prio_lt(p, pg.p, pg) & f_none(f, pg)
+            winning = (v & even(z, pg)) if player == 0 else (v & odd(z, pg))
+            f[p] = f[p] | ~winning
+            z = z & ~winning
             p = 0
         else:
             # forall v in V_<p: F[v]=p: F[v] <- -
             f[p] = f[p] & ~(prio_lt(p, pg.p, pg) & f[p])
             p += 1
 
-    return even(z, pg), odd(z, pg)
+    return even(z, pg), odd(z, pg), even(z, pg) & pg.even & s, odd(z, pg) & pg.odd & s
 
 # Returns a bdd of all vertices which are not frozen
 def f_none(f: dict, pg: parity_game):
@@ -57,17 +56,13 @@ def winner(sat: dict, z: BDD, pg: parity_game):
 
 def onestep(v: dict, z: BDD, pg: parity_game):
     player = 0 if pg.bdd.quantify(pg.bdd.add_expr(sat_to_expr(v)) & pg.even, pg.variables, forall=False) == pg.bdd.true else 1
-    logging.debug("player: " + str(player))
     if player == 0:
         succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg))
     else:
         succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg))
-    logging.debug("Successors: " + str([ pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(succ, care_vars=(pg.variables + pg.variables_))]))
     if pg.bdd.quantify(succ, (pg.variables + pg.variables_), forall=False) == pg.bdd.true:
-        logging.debug("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(player))
         return player, succ
 
-    logging.debug("Based on distractions" + str([pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(z, care_vars=pg.variables) ]) + ", vertex " + pg.sat_to_hex(v) + " is won by player " + str(1 - player))
     return 1 - player, None
 
 def onestep_0(z: BDD, pg: parity_game):
@@ -83,13 +78,8 @@ def onestep_1(z: BDD, pg: parity_game):
     o = odd(z, pg)
     odd_pre = preimage(o, pg)
 
-    logging.debug("Odd: {0}".format(pg.bdd_sat(o)))
-    logging.debug("preimage(odd(z)): {0}".format(pg.bdd_sat(odd_pre)))
-
     res = (pg.even & ~(pg.bdd.quantify(odd_pre & pg.even, pg.variables, forall=False))
         | (pg.bdd.quantify(odd_pre & pg.odd, pg.variables, forall=False)))
-
-    logging.debug("Res: {0}".format(pg.bdd_sat(res)))
 
     return res
 
