@@ -22,6 +22,7 @@ from random_parity_game_generator import random_game
 from parity_game import parity_game
 from dfi import dfi
 from zlk import zlk
+from fpj import fpj
 from time import process_time
 import sys, os, random, math
 from dd.autoref import BDD
@@ -43,58 +44,73 @@ games_per_size = 5000
 
 #generate games with size (nr. Booleans) in range(3,35):
 for game_size in game_sizes_range:
-  zlk_total_time = 0.0
-  dfi_total_time = 0.0
+  algorithms = [zlk, dfi]
+  profiling = []
+  total_solving_times = [ 0 for _ in algorithms ]
   d = math.floor(math.sqrt(2*game_size))
   for iteration in range(0, games_per_size):
     pg = random_game(game_size, d, 4, False, False)
 
-    pg_zlk = pg.copy()
-    pg_dfi = pg.copy()
-    pg.bdd.collect_garbage()
-    pg_zlk.bdd.collect_garbage()
-    pg_dfi.bdd.collect_garbage()
-
-    # solve game using zielonka
-    zlk_solver_start = process_time()
-    (W0,W1) = zlk(pg_zlk)
-    zlk_solver_end = process_time()
-    zlk_total_time += zlk_solver_end - zlk_solver_start
+    games = [ pg.copy() for _ in algorithms ]
+    for game in games: game.bdd.collect_garbage()
     pg.bdd.collect_garbage()
 
-    # solve game using DFI
-    if do_profiling:
-      profiler.enable()
-    dfi_solver_start = process_time()
-    (W0_,W1_, _, _) = dfi(pg_dfi)
-    dfi_solver_end = process_time()
-    if do_profiling:
-      profiler.disable()
-    dfi_total_time += dfi_solver_end - dfi_solver_start
-    pg.bdd.collect_garbage()
+    results = [ None for _ in algorithms ]
+    for i in range(len(algorithms)):
+        algorithm = algorithms[i]
+        game = games[i]
+
+        if algorithm.__name__ in profiling:
+            profiler.enable()
+
+        start_time = process_time()
+        res = algorithm(game)
+        end_time = process_time()
+
+        if algorithm.__name__ in profiling:
+            profiler.disable()
+
+        total_solving_times[i] += end_time - start_time
+        results[i] = res
+        game.bdd.collect_garbage()
 
     nr_vertices_ = str(pow(2, game_size)).rjust(5)
     d_ = str(d).rjust(5)
     iteration_ = str(iteration).rjust(5)
-    zlk_total_time_ = ("%10.3f"%zlk_total_time).rjust(10)
-    dfi_total_time_ = ("%10.3f"%dfi_total_time).rjust(10)
-    logging.info("|V| = {0} d = {1} | game {2} | zlk time: {3} | dfi time: {4}".format(nr_vertices_, d_, iteration_, zlk_total_time_, dfi_total_time_))
+    text = "|V| = {0} d = {1} | game {2}".format(nr_vertices_, d_, iteration_)
+
+    for i in range(len(algorithms)):
+        text += "| {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
+    logging.info(text)
 
     def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
       return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
 
+    def show_results_diff():
+        logging.error("Error: difference in outcome between algorithms")
+
+        for i in range(len(algorithms)):
+            logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(results[i][0], games[i])), str(bdd_sat_to_hex(results[i][1], games[i]))))
+
+        logging.error("Game:\n" + str(pg))
+        pg.show()
+
     # sanity checks
-    if (W0 != W0_):
-      logging.error("Error: difference in outcome between Zielonka and DFI")
-      logging.error("Zielonka:\nW0:" + str(bdd_sat_to_hex(W0, pg_zlk)) + "\nW1:" + str(bdd_sat_to_hex(W1, pg_zlk)) + "\n")
-      logging.error("DFI:\nW0:" + str(bdd_sat_to_hex(W0_, pg_dfi)) + "\nW1:" + str(bdd_sat_to_hex(W1_, pg_dfi)) + "\n")
-      logging.error("Difference: " + str(set(bdd_sat_to_hex(W0_, pg_dfi)).symmetric_difference(set(bdd_sat_to_hex(W0, pg_zlk)))))
-      logging.error("Game:\n" + str(pg))
+    (w0, w1) = (None, None)
+    for result in results:
+        if((w0 != result[0] or w1 != result[1]) and w0 != None):
+            show_results_diff()
+            sys.exit()
+        else:
+            if w0 == None:
+                w0 = result[0]
+                w1 = result[1]
+        
+        if(len(result) == 4):
+            # TODO: validate strategy
+            pass
 
-      pg.show()
-      sys. exit()
-
-  if do_profiling:
+  if profiling:
     stats = pstats.Stats(profiler, stream=sys.stdout)
     stats.sort_stats('time')
     stats.print_stats()
