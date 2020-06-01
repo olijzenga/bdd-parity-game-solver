@@ -44,12 +44,14 @@ games_per_size = 5000
 
 #generate games with size (nr. Booleans) in range(3,35):
 for game_size in game_sizes_range:
-  algorithms = [zlk, dfi]
+  algorithms = [zlk, dfi, fpj]
   profiling = []
   total_solving_times = [ 0 for _ in algorithms ]
   d = math.floor(math.sqrt(2*game_size))
   for iteration in range(0, games_per_size):
     pg = random_game(game_size, d, 4, False, False)
+
+    logging.debug(str(pg))
 
     games = [ pg.copy() for _ in algorithms ]
     for game in games: game.bdd.collect_garbage()
@@ -86,25 +88,26 @@ for game_size in game_sizes_range:
     def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
       return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
 
-    def show_results_diff():
+    def show_results_diff(i, j):
         logging.error("Error: difference in outcome between algorithms")
 
-        for i in range(len(algorithms)):
-            logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(results[i][0], games[i])), str(bdd_sat_to_hex(results[i][1], games[i]))))
+        logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(results[i][0], games[i])), str(bdd_sat_to_hex(results[i][1], games[i]))))
+        logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[j].__name__, str(bdd_sat_to_hex(results[j][0], games[i])), str(bdd_sat_to_hex(results[j][1], games[j]))))
+        logging.error("Difference: {0}".format(str(set(bdd_sat_to_hex(results[i][0], games[i])).symmetric_difference(set(bdd_sat_to_hex(results[j][0], games[j]))))))
 
         logging.error("Game:\n" + str(pg))
         pg.show()
 
     # sanity checks
-    (w0, w1) = (None, None)
-    for result in results:
-        if((w0 != result[0] or w1 != result[1]) and w0 != None):
-            show_results_diff()
+    j = None
+    for i in range(len(algorithms)):
+        result = results[i]
+
+        if(j != None and (results[j][0] != result[0] or results[j][1] != result[1])):
+            show_results_diff(i, j)
             sys.exit()
-        else:
-            if w0 == None:
-                w0 = result[0]
-                w1 = result[1]
+        
+        j = i
         
         if(len(result) == 4):
             # TODO: validate strategy

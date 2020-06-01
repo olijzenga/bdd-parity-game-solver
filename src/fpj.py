@@ -1,25 +1,46 @@
 from dd.autoref import BDD
 from parity_game import parity_game, sat_to_expr
 import logging
+import time
 
 def fpj(pg: parity_game):
     
     z = pg.prio_even
     j = pg.bdd.false
-
-    while (j != pg.v):   # Maybe there is a more efficient way of doing this?
+    u = unjustified(j, pg)
+    while unjustified(j, pg) != pg.bdd.false:   # Maybe there is a more efficient way of doing this?
+        assert (u & j) == pg.bdd.false
+        logging.debug("\n\n\nnext")
+        logging.debug("J: " + pg.bdd_sat(pg.bdd.quantify(j, pg.variables_, forall=False)))
+        logging.debug("U(J): " + pg.bdd_sat(u))
         z, j = next(z, j, pg)
+        time.sleep(0.2)
+        u = unjustified(j, pg)
     
-    return z, j
+    w0 = z
+    w1 = pg.v & ~z
+    s0 = j & pg.even & w0
+    s1 = j & pg.odd & w1
+    return w0, w1, s0, s1
 
 def next(z: BDD, j: BDD, pg: parity_game):
     i = 0
-    while (pg.p[i] & ~j) == False:
+    while (pg.p[i] & unjustified(j, pg)) == pg.bdd.false:
         i += 1
-    u = pg.p[i] & ~j
-    u_pd = xor(phi(z, pg), z, pg) & u
+    logging.debug("prio: " + str(i))
+    u = pg.bdd.quantify(pg.p[i] & ~j, pg.variables_, forall=False)
+
+    logging.debug("U: " + pg.bdd_sat(u))
+    logging.debug("Z: " + pg.bdd_sat(z))
+
+    u_pd = xor(phi(z, pg), z) & u
+
+    logging.debug("xor: " + pg.bdd_sat(xor(phi(z, pg), z)))
+    logging.debug("phi: " + pg.bdd_sat(phi(z, pg)))
+    logging.debug("U_pd: " + pg.bdd_sat(u_pd))
 
     if u_pd != pg.bdd.false:
+        logging.debug("new")
         r = reaches(j, u_pd, pg)
         if i % 2 == 0:
             z_r = (z & ~(r & pg.prio_odd)) & prio_lt(i, pg.p, pg)
@@ -27,9 +48,12 @@ def next(z: BDD, j: BDD, pg: parity_game):
             z_r = (z | (r & pg.prio_even)) & prio_lt(i, pg.p, pg)
         j_t = j & ~(r & pg.bdd.let(pg.substitution_list, pg.v))
         j_ = j_t | strategy_0(z, u_pd, pg)
-        z_ = (z & prio_gt(i, pg.p, pg)) | (xor(z, u_pd, pg) | z_r)
+        z_ = (z & prio_gt(i, pg.p, pg)) | (xor(z, u_pd) | z_r)
     else:
-        j_ = j | strategy_0(z, u, pg)
+        logging.debug("no new")
+        strat = strategy_0(z, u, pg)
+        logging.debug("new moves: " + str([ pg.sat_to_hex(sat) + " <==> " + pg.sat_to_hex(sat, edge=True) for sat in pg.bdd.pick_iter(strat, care_vars=(pg.variables_ + pg.variables))]))
+        j_ = j | strat
         z_ = z
     
     return z_, j_
@@ -43,24 +67,29 @@ def strategy_0(z: BDD, u: BDD, pg: parity_game):
 
     z_ = pg.bdd.let(pg.substitution_list, z)
 
-    j = j | (pg.e & even & z_)
-    j = j | (pg.e & odd & ~z_)
-    j = j | (pg.e & losing)
+    j = j | (pg.e & even & z_ & u)
+    j = j | (pg.e & odd & ~z_ & u)
+    j = j | (pg.e & losing & u)
 
     return j
 ##{v ∈ V0|∃w:(v, w) ∈ E ∧ w ∈ S } ∪ { v ∈ V1| ∀w: (v, w) ∈ E ⇒ w∈S}
 def phi(z: BDD, pg: parity_game):
+
     z_ = pg.bdd.let(pg.substitution_list, z)
 
-    return ((pg.even & pg.bdd.quantify(pg.e & z_, pg.variables_, forall=False))
-        | (pg.odd & pg.bdd.quantify(pg.bdd.let({ 'a': pg.e, 'b': z_}, pg.bdd.add_expr('a => b')), pg.variables_, forall=True)))
+    res = ((pg.even & pg.bdd.quantify(pg.e & z_, pg.variables_, forall=False))
+        | (pg.odd & pg.bdd.quantify(pg.bdd.add_expr('{a} => {b}'.format(a=pg.e, b=z_)), pg.variables_, forall=True)))
+    return res
 
 def preimage (v: BDD, pg: parity_game):
     v_next = pg.bdd.let(pg.substitution_list, v)
     return pg.bdd.quantify(v_next & pg.e, pg.variables_, forall = False)
 
-def xor(a: BDD, b: BDD, pg: parity_game):
-    return pg.bdd.add_expr((a | b) & ~(a | b))
+def xor(a: BDD, b: BDD):
+    return (a & ~b) | (~a & b)
+
+def unjustified(j: BDD, pg: parity_game):
+    return pg.v & ~pg.bdd.quantify(j, pg.variables_, forall=False)
 
 def reaches(j: BDD, u_pd: BDD, pg: parity_game):
     return u_pd
