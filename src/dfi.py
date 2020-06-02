@@ -22,17 +22,20 @@ def dfi(pg: parity_game):
 
         player = p % 2
         v_p = pg.p[p]
-        change = False
+        v = (v_p & ~z)
 
-        for v in [ sat for sat in pg.bdd.pick_iter(v_p & ~z, care_vars=pg.variables)]:
-            v_expr = pg.bdd.add_expr(sat_to_expr(v))
-            (player_, move) = onestep(v, z, pg)
-            # Remove previous strategies, and add new one (this would also work if move contains multiple vertices)
-            s = (s & ~ v_expr)
-            if move: s = s | (v_expr & pg.bdd.let(pg.substitution_list, move))
-            if player_ != player:
-                z = z | v_expr
-                change = True
+        os = onestep_0(v, z, pg)
+        if player == 0:
+            z_ = v & ~os
+        else:
+            z_ = os
+        logging.debug("z_: " + pg.bdd_sat(z_))
+        change = z_ != pg.bdd.false
+        z = z | z_
+        # Update strategy
+        s = s & ~v
+        s = s | (v & pg.even & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg)))
+        s = s | (v & pg.odd & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg)))
         
         if change:
             v = prio_lt(p, pg.p, pg) & f_none(f, pg)
@@ -59,34 +62,32 @@ def winner(sat: dict, z: BDD, pg: parity_game):
     v = pg.bdd.add_expr(sat_to_expr(sat))
     return 0 if (v & even(z, pg)) == pg.bdd.true else 1
 
-def onestep(v: dict, z: BDD, pg: parity_game):
-    player = 0 if pg.bdd.quantify(pg.bdd.add_expr(sat_to_expr(v)) & pg.even, pg.variables, forall=False) == pg.bdd.true else 1
-    if player == 0:
-        succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg))
-    else:
-        succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg))
-    if pg.bdd.quantify(succ, (pg.variables + pg.variables_), forall=False) == pg.bdd.true:
-        return player, succ
+# def onestep(v: dict, z: BDD, pg: parity_game):
+#     player = 0 if pg.bdd.quantify(pg.bdd.add_expr(sat_to_expr(v)) & pg.even, pg.variables, forall=False) == pg.bdd.true else 1
+#     if player == 0:
+#         succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg))
+#     else:
+#         succ = pg.bdd.add_expr(sat_to_expr(v)) & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg))
+#     if pg.bdd.quantify(succ, (pg.variables + pg.variables_), forall=False) == pg.bdd.true:
+#         return player, succ
 
-    return 1 - player, None
+#     return 1 - player, None
 
-def onestep_0(z: BDD, pg: parity_game):
-    # Edges which end in the winning area of Even
-    e = even(z, pg)
-    even_pre = preimage(e, pg)
+# def onestep_0(v: BDD, z: BDD, pg: parity_game):
+#     # Edges which end in the winning area of Even
+#     e = even(z, pg)
+#     even_pre = preimage(e, pg)
 
-    return ((pg.even & pg.bdd.quantify(even_pre, pg.variables, forall=False))
-        | (pg.odd & pg.bdd.quantify(even_pre, pg.variables, forall=True)))
+#     return ((v & pg.even & pg.bdd.quantify(even_pre, pg.variables, forall=False))
+#         | (v & pg.bdd.quantify(pg.odd & even_pre, pg.variables, forall=True)))
 
-def onestep_1(z: BDD, pg: parity_game):
-    # Edges which end in the winning area of Odd
-    o = odd(z, pg)
-    odd_pre = preimage(o, pg)
+def onestep_0(v: BDD, z: BDD, pg: parity_game):
 
-    res = (pg.even & ~(pg.bdd.quantify(odd_pre & pg.even, pg.variables, forall=False))
-        | (pg.bdd.quantify(odd_pre & pg.odd, pg.variables, forall=False)))
+    z_ = pg.bdd.let(pg.substitution_list, even(z, pg))
 
-    return res
+    res = ((pg.even & pg.bdd.quantify(pg.e & z_, pg.variables_, forall=False))
+        | (pg.bdd.quantify(pg.odd & pg.bdd.add_expr('{a} => {b}'.format(a=pg.e, b=z_)), pg.variables_, forall=True)))
+    return v & res
 
 def even(z: BDD, pg: parity_game):
     return (pg.prio_even & ~z) | (pg.prio_odd & z)
