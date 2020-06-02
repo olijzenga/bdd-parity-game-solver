@@ -14,7 +14,6 @@ def fpj(pg: parity_game):
         logging.debug("J: " + pg.bdd_sat(pg.bdd.quantify(j, pg.variables_, forall=False)))
         logging.debug("U(J): " + pg.bdd_sat(u))
         z, j = next(z, j, pg)
-        time.sleep(0.2)
         u = unjustified(j, pg)
     
     w0 = z
@@ -81,7 +80,7 @@ def phi(z: BDD, pg: parity_game):
         | (pg.odd & pg.bdd.quantify(pg.bdd.add_expr('{a} => {b}'.format(a=pg.e, b=z_)), pg.variables_, forall=True)))
     return res
 
-def preimage (v: BDD, pg: parity_game):
+def preimage(v: BDD, pg: parity_game):
     v_next = pg.bdd.let(pg.substitution_list, v)
     return pg.bdd.quantify(v_next & pg.e, pg.variables_, forall = False)
 
@@ -91,8 +90,20 @@ def xor(a: BDD, b: BDD):
 def unjustified(j: BDD, pg: parity_game):
     return pg.v & ~pg.bdd.quantify(j, pg.variables_, forall=False)
 
-def reaches(j: BDD, u_pd: BDD, pg: parity_game):
-    return u_pd
+# Set of vertices from which x can be reached over edges in j
+def reaches(j: BDD, x: BDD, pg: parity_game):
+    # Preimage of v using edges in e
+    def preimage(v: BDD, e: BDD):
+        v_next = pg.bdd.let(pg.substitution_list, v)
+        return pg.bdd.quantify(v_next & e, pg.variables_, forall = False)
+
+    pre = x | preimage(x, j)
+    pre_ = preimage(pre, j)
+    while (pre_ & ~pre) != pg.bdd.false:
+        pre = pre | pre_
+        pre_ = preimage(pre_, j)
+
+    return pre
 
 def prio_lt(prio: int, p: dict, pg: parity_game):
     """Returns a BDD representing all vertices with priority lower than _prio_
