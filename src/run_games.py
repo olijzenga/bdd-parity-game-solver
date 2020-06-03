@@ -37,10 +37,11 @@ else: log_level = logging.INFO
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 profiler = cProfile.Profile()
-do_profiling = False
+
+profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 
 game_sizes_range = range(5,35)
-games_per_size = 5000
+games_per_size = 500
 
 
 algorithms = [zlk, dfi, fpj]
@@ -72,14 +73,14 @@ def run_games():
                 algorithm = algorithms[i]
                 game = games[i]
 
-                if algorithm.__name__ in profiling:
+                if algorithm.__name__ == profile_algo:
                     profiler.enable()
 
                 start_time = process_time()
                 res = algorithm(game)
                 end_time = process_time()
 
-                if algorithm.__name__ in profiling:
+                if algorithm.__name__ == profile_algo:
                     profiler.disable()
 
                 total_solving_times[i] += end_time - start_time
@@ -111,7 +112,7 @@ def run_games():
                         show_single_result(i)
                         sys.exit()
 
-        if profiling:
+        if profile_algo:
             stats = pstats.Stats(profiler, stream=sys.stdout)
             stats.sort_stats('time')
             stats.print_stats()

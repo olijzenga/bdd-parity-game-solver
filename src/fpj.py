@@ -3,16 +3,20 @@ from parity_game import parity_game, sat_to_expr
 import logging
 import time
 
+logger = logging.getLogger(__name__)
+
 def fpj(pg: parity_game):
     
     z = pg.prio_even
     j = pg.bdd.false
     u = unjustified(j, pg)
-    while unjustified(j, pg) != pg.bdd.false:   # Maybe there is a more efficient way of doing this?
-        assert (u & j) == pg.bdd.false
-        logging.debug("\n\n\nnext")
-        logging.debug("J: " + pg.bdd_sat(pg.bdd.quantify(j, pg.variables_, forall=False)))
-        logging.debug("U(J): " + pg.bdd_sat(u))
+    while unjustified(j, pg) != pg.bdd.false:
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logging.debug("\n\n\nnext")
+            logging.debug("J: " + pg.bdd_sat(pg.bdd.quantify(j, pg.variables_, forall=False)))
+            logging.debug("U(J): " + pg.bdd_sat(u))
+
         z, j = next(z, j, pg)
         u = unjustified(j, pg)
     
@@ -26,41 +30,55 @@ def next(z: BDD, j: BDD, pg: parity_game):
     i = 0
     while (pg.p[i] & unjustified(j, pg)) == pg.bdd.false:
         i += 1
-    logging.debug("prio: " + str(i))
     u = pg.p[i] & unjustified(j, pg)
 
-    logging.debug("U: " + pg.bdd_sat(u))
-    logging.debug("Z: " + pg.bdd_sat(z))
+    if logger.isEnabledFor(logging.DEBUG):
+        logging.debug("prio: " + str(i))
+        logging.debug("U: " + pg.bdd_sat(u))
+        logging.debug("Z: " + pg.bdd_sat(z))
 
     u_pd = xor(phi(z, pg), z) & u
 
-    logging.debug("xor: " + pg.bdd_sat(xor(phi(z, pg), z)))
-    logging.debug("phi: " + pg.bdd_sat(phi(z, pg)))
-    logging.debug("U_pd: " + pg.bdd_sat(u_pd))
+    if logger.isEnabledFor(logging.DEBUG):
+        logging.debug("xor: " + pg.bdd_sat(xor(phi(z, pg), z)))
+        logging.debug("phi: " + pg.bdd_sat(phi(z, pg)))
+        logging.debug("U_pd: " + pg.bdd_sat(u_pd))
 
     if u_pd != pg.bdd.false:
-        logging.debug("new")
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logging.debug("found vertices to update")
         r = reaches(j, u_pd, pg)
-        logging.debug("reaches: " + pg.bdd_sat(r))
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logging.debug("reaches: " + pg.bdd_sat(r))
+
         if i % 2 == 0:
             z_r = (z & ~(r & pg.prio_odd)) & prio_lt(i, pg.p, pg)
         else:
             z_r = (z | (r & pg.prio_even)) & prio_lt(i, pg.p, pg)
-        logging.debug("z_r: " + pg.bdd_sat(z_r))
         j_t = j & ~r
 
-        logging.debug("xor(z, u_pd): " + pg.bdd_sat(xor(z, u_pd)))
+        if logger.isEnabledFor(logging.DEBUG):
+            logging.debug("z_r: " + pg.bdd_sat(z_r))
+            logging.debug("xor(z, u_pd): " + pg.bdd_sat(xor(z, u_pd)))
+
         z_ = (z & prio_gt(i, pg.p, pg)) | xor(z & pg.p[i], u_pd) | z_r
 
         strat = strategy_0(z_, u_pd, pg)
-        logging.debug("new moves: " + pg.bdd_sat_edges(strat))
         j_ = j_t | strat
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logging.debug("new moves: " + pg.bdd_sat_edges(strat))
+
     else:
         z_ = z
-        logging.debug("no new")
         strat = strategy_0(z_, u, pg)
-        logging.debug("new moves: " + pg.bdd_sat_edges(strat))
         j_ = j | strat
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logging.debug("found no new vertices to update")
+            logging.debug("new moves: " + pg.bdd_sat_edges(strat))
     
     return z_, j_
 
