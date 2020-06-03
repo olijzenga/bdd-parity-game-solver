@@ -39,81 +39,146 @@ logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 profiler = cProfile.Profile()
 do_profiling = False
 
-game_sizes_range = range(10,35)
+game_sizes_range = range(5,35)
 games_per_size = 5000
 
-#generate games with size (nr. Booleans) in range(3,35):
-for game_size in game_sizes_range:
-  algorithms = [zlk, dfi, fpj]
-  profiling = []
-  total_solving_times = [ 0 for _ in algorithms ]
-  d = math.floor(math.sqrt(2*game_size))
-  for iteration in range(0, games_per_size):
-    pg = random_game(game_size, d, 4, False, False)
 
-    logging.debug(str(pg))
+algorithms = [zlk, dfi, fpj]
+profiling = []
+total_solving_times = [ 0 for _ in algorithms ]
+results = [ None for _ in algorithms ]
+games = [ None for _ in algorithms ]
+pg = None
 
-    games = [ pg.copy() for _ in algorithms ]
-    for game in games: game.bdd.collect_garbage()
-    pg.bdd.collect_garbage()
+def run_games():
+    global total_solving_times
+    global results
+    global games
+    global pg
 
-    results = [ None for _ in algorithms ]
-    for i in range(len(algorithms)):
-        algorithm = algorithms[i]
-        game = games[i]
+    #generate games with size (nr. Booleans) in range(3,35):
+    for game_size in game_sizes_range:
+        d = math.floor(math.sqrt(2*game_size))
+        for iteration in range(0, games_per_size):
+            pg = random_game(game_size, d, 4, False, False)
 
-        if algorithm.__name__ in profiling:
-            profiler.enable()
+            logging.debug(str(pg))
 
-        start_time = process_time()
-        res = algorithm(game)
-        end_time = process_time()
+            games = [ pg.copy() for _ in algorithms ]
+            for game in games: game.bdd.collect_garbage()
+            pg.bdd.collect_garbage()
 
-        if algorithm.__name__ in profiling:
-            profiler.disable()
+            for i in range(len(algorithms)):
+                algorithm = algorithms[i]
+                game = games[i]
 
-        total_solving_times[i] += end_time - start_time
-        results[i] = res
-        game.bdd.collect_garbage()
+                if algorithm.__name__ in profiling:
+                    profiler.enable()
 
-    nr_vertices_ = str(pow(2, game_size)).rjust(5)
-    d_ = str(d).rjust(5)
-    iteration_ = str(iteration).rjust(5)
-    text = "|V| = {0} d = {1} | game {2}".format(nr_vertices_, d_, iteration_)
+                start_time = process_time()
+                res = algorithm(game)
+                end_time = process_time()
 
-    for i in range(len(algorithms)):
-        text += "| {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
-    logging.info(text)
+                if algorithm.__name__ in profiling:
+                    profiler.disable()
 
-    def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
+                total_solving_times[i] += end_time - start_time
+                results[i] = res
+                game.bdd.collect_garbage()
+
+            nr_vertices_ = str(pow(2, game_size)).rjust(5)
+            d_ = str(d).rjust(5)
+            iteration_ = str(iteration).rjust(5)
+            text = "|V| = {0} d = {1} | game {2}".format(nr_vertices_, d_, iteration_)
+
+            for i in range(len(algorithms)):
+                text += "| {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
+            logging.info(text)
+
+            # sanity checks
+            j = None
+            for i in range(len(algorithms)):
+                result = results[i]
+
+                if j != None and (results[j][0] != result[0] or results[j][1] != result[1]):
+                    show_results_diff(i, j)
+                    sys.exit()
+                
+                j = i
+                
+                if len(result) == 4:
+                    if not validate_strategy(results[i][0], results[i][1], results[i][2], results[i][3], games[i], algorithms[i].__name__):
+                        show_single_result(i)
+                        sys.exit()
+
+        if profiling:
+            stats = pstats.Stats(profiler, stream=sys.stdout)
+            stats.sort_stats('time')
+            stats.print_stats()
+
+def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
       return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
 
-    def show_results_diff(i, j):
-        logging.error("Error: difference in outcome between algorithms")
+def show_results_diff(i, j):
+    logging.error("Error: difference in outcome between algorithms")
 
-        logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(results[i][0], games[i])), str(bdd_sat_to_hex(results[i][1], games[i]))))
-        logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[j].__name__, str(bdd_sat_to_hex(results[j][0], games[i])), str(bdd_sat_to_hex(results[j][1], games[j]))))
-        logging.error("Difference: {0}".format(str(set(bdd_sat_to_hex(results[i][0], games[i])).symmetric_difference(set(bdd_sat_to_hex(results[j][0], games[j]))))))
+    logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(results[i][0], games[i])), str(bdd_sat_to_hex(results[i][1], games[i]))))
+    logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[j].__name__, str(bdd_sat_to_hex(results[j][0], games[i])), str(bdd_sat_to_hex(results[j][1], games[j]))))
+    logging.error("Difference: {0}".format(str(set(bdd_sat_to_hex(results[i][0], games[i])).symmetric_difference(set(bdd_sat_to_hex(results[j][0], games[j]))))))
 
-        logging.error("Game:\n" + str(pg))
-        pg.show()
+    logging.error("Game:\n" + str(pg))
+    pg.show()
 
-    # sanity checks
-    j = None
-    for i in range(len(algorithms)):
-        result = results[i]
+# Requires result to have a strategy
+def show_single_result(i):
 
-        if(j != None and (results[j][0] != result[0] or results[j][1] != result[1])):
-            show_results_diff(i, j)
-            sys.exit()
-        
-        j = i
-        
-        if(len(result) == 4):
-            # TODO: validate strategy
-            pass
+    pg = games[i]
+    (w0, w1, s0, s1) = results[i]
 
-  if profiling:
-    stats = pstats.Stats(profiler, stream=sys.stdout)
-    stats.sort_stats('time')
-    stats.print_stats()
+    logging.error("Result for algorithm {0}:".format(algorithms[i].__name__))
+    logging.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(w0, pg)), str(bdd_sat_to_hex(w1, pg))))
+    logging.error("{0}:\nS0: {1}\nS1: {2}".format(
+        algorithms[i].__name__, 
+        str(pg.bdd_sat_edges(s0)),
+        str(pg.bdd_sat_edges(s1))
+    ))
+
+    logging.error("Game:\n" + str(pg))
+    pg.show()
+
+def validate_strategy(w0: BDD, w1: BDD, s0: BDD, s1: BDD, pg: parity_game, name: str):
+
+    if (w0 & pg.even & s0) != s0:
+        logging.error("{0}: Strategy for Even does not cover all vertices won and controlled by Even".format(name))
+        logging.error("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.even & w0) & ~s0, pg.variables_)))
+        return False
+
+    if (w1 & pg.odd & s1) != s1:
+        logging.error("{0}: Strategy for Odd does not cover all vertices won and controlled by Odd".format(name))
+        logging.error("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.odd & w1) & ~s1, pg.variables_)))
+        return False
+
+    if (~pg.even & s0) != pg.bdd.false:
+        logging.error("{0}: Strategy for Even contains moves from vertices controlled by Odd".format(name))
+        logging.error("Bad moves: " + pg.bdd_sat_edges(~pg.even & s0))
+        return False
+
+    if (~pg.odd & s1) != pg.bdd.false:
+        logging.error("{0}: Strategy for Odd contains moves from vertices controlled by Even".format(name))
+        logging.error("Bad moves: " + pg.bdd_sat_edges(~pg.odd & s1))
+        return False
+
+    if (s0 & pg.bdd.let(pg.substitution_list, w1)) != pg.bdd.false:
+        logging.error("{0}: Strategy of Even contains a move to the winning area of Odd".format(name))
+        logging.error("Wrong moves: " + pg.bdd_sat_edges(s0 & pg.bdd.let(pg.substitution_list, w1)))
+        return False
+
+    if (s1 & pg.bdd.let(pg.substitution_list, w0)) != pg.bdd.false:
+        logging.error("{0}: Strategy of Odd contains a move to the winning area of Even".format(name))
+        logging.error("Wrong moves: " + pg.bdd_sat_edges(s1 & pg.bdd.let(pg.substitution_list, w0)))
+        return False
+
+    return True
+
+if __name__ == "__main__":
+    run_games()
