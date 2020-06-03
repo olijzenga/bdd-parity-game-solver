@@ -39,7 +39,7 @@ logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 profiler = cProfile.Profile()
 do_profiling = False
 
-game_sizes_range = range(5,35)
+game_sizes_range = range(10,35)
 games_per_size = 5000
 
 #generate games with size (nr. Booleans) in range(3,35):

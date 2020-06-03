@@ -27,7 +27,7 @@ def next(z: BDD, j: BDD, pg: parity_game):
     while (pg.p[i] & unjustified(j, pg)) == pg.bdd.false:
         i += 1
     logging.debug("prio: " + str(i))
-    u = pg.bdd.quantify(pg.p[i] & ~j, pg.variables_, forall=False)
+    u = pg.p[i] & unjustified(j, pg)
 
     logging.debug("U: " + pg.bdd_sat(u))
     logging.debug("Z: " + pg.bdd_sat(z))
@@ -41,13 +41,16 @@ def next(z: BDD, j: BDD, pg: parity_game):
     if u_pd != pg.bdd.false:
         logging.debug("new")
         r = reaches(j, u_pd, pg)
+        logging.debug("reaches: " + pg.bdd_sat(r))
         if i % 2 == 0:
             z_r = (z & ~(r & pg.prio_odd)) & prio_lt(i, pg.p, pg)
         else:
             z_r = (z | (r & pg.prio_even)) & prio_lt(i, pg.p, pg)
-        j_t = j & ~(r & pg.bdd.let(pg.substitution_list, pg.v))
+        logging.debug("z_r: " + pg.bdd_sat(z_r))
+        j_t = j & ~r
         j_ = j_t | strategy_0(z, u_pd, pg)
-        z_ = (z & prio_gt(i, pg.p, pg)) | (xor(z, u_pd) | z_r)
+        logging.debug("xor(z, u_pd): " + pg.bdd_sat(xor(z, u_pd)))
+        z_ = (z & prio_gt(i, pg.p, pg)) | xor(z & pg.p[i], u_pd) | z_r
     else:
         logging.debug("no new")
         strat = strategy_0(z, u, pg)
