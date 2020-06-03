@@ -99,8 +99,11 @@ class parity_game:
             s = Source(text_file.read(), filename="output/dot.png", format="png")
             s.view()
 
-    def bdd_sat(self, bdd: BDD, edge=False):
-        return ', '.join([self.sat_to_hex(sat, edge=edge) for sat in self.bdd.pick_iter(bdd, self.variables)])
+    def bdd_sat(self, bdd: BDD):
+        return ', '.join([self.sat_to_hex(sat) for sat in self.bdd.pick_iter(bdd, self.variables)])
+
+    def bdd_sat_edges(self, bdd: BDD):
+        return ', '.join([self.sat_to_hex(sat) + " <==> " + self.sat_to_hex(sat, edge=True) for sat in self.bdd.pick_iter(bdd, care_vars=(self.variables_ + self.variables))])
 
     # Gather data used for exporting this parity game to a dot file, or printing it
     def get_repr_data(self):

@@ -48,32 +48,30 @@ def next(z: BDD, j: BDD, pg: parity_game):
             z_r = (z | (r & pg.prio_even)) & prio_lt(i, pg.p, pg)
         logging.debug("z_r: " + pg.bdd_sat(z_r))
         j_t = j & ~r
-        j_ = j_t | strategy_0(z, u_pd, pg)
+
         logging.debug("xor(z, u_pd): " + pg.bdd_sat(xor(z, u_pd)))
         z_ = (z & prio_gt(i, pg.p, pg)) | xor(z & pg.p[i], u_pd) | z_r
+
+        strat = strategy_0(z_, u_pd, pg)
+        logging.debug("new moves: " + pg.bdd_sat_edges(strat))
+        j_ = j_t | strat
     else:
-        logging.debug("no new")
-        strat = strategy_0(z, u, pg)
-        logging.debug("new moves: " + str([ pg.sat_to_hex(sat) + " <==> " + pg.sat_to_hex(sat, edge=True) for sat in pg.bdd.pick_iter(strat, care_vars=(pg.variables_ + pg.variables))]))
-        j_ = j | strat
         z_ = z
+        logging.debug("no new")
+        strat = strategy_0(z_, u, pg)
+        logging.debug("new moves: " + pg.bdd_sat_edges(strat))
+        j_ = j | strat
     
     return z_, j_
 
 def strategy_0(z: BDD, u: BDD, pg: parity_game):
-    j = pg.bdd.false
-
     even = pg.even & z
     odd = pg.odd & ~z
     losing = pg.v & ~(even | odd) # vertices won by the player that does not own it
 
     z_ = pg.bdd.let(pg.substitution_list, z)
 
-    j = j | (pg.e & even & z_ & u)
-    j = j | (pg.e & odd & ~z_ & u)
-    j = j | (pg.e & losing & u)
-
-    return j
+    return (pg.e & even & z_ & u) | (pg.e & odd & (~z_) & u) | (pg.e & losing & u)
 ##{v ∈ V0|∃w:(v, w) ∈ E ∧ w ∈ S } ∪ { v ∈ V1| ∀w: (v, w) ∈ E ⇒ w∈S}
 def phi(z: BDD, pg: parity_game):
 
