@@ -50,9 +50,9 @@ profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 DO_PLOT = False
 PLOT_COLORS = ["green", "red", "blue", "yellow", "black", "purple"]
 NR_OF_EXPERIMENTS = 30
-STARTING_GAME_SIZE = 5
+STARTING_GAME_SIZE = 20
 
-games_per_size = 25
+games_per_size = 500
 
 algorithms = [zlk, dfi, fpj]
 profiling = []
@@ -79,7 +79,7 @@ def run_games():
     for game_size in game_sizes_range:
         d = 4
         for iteration in range(0, games_per_size):
-            pg = random_game(game_size, d, 4, False, False)
+            pg = random_game(game_size, d, 64, False, False)
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(str(pg))
@@ -133,6 +133,8 @@ def run_games():
 
         # Capture results for plotting
         plot_db.append({ 'd': d, '|V|': game_size, 'avgs': { algorithms[i].__name__ : (total_solving_times[i] / games_per_size) for i in range(len(algorithms)) } })
+
+        total_solving_times = [ 0 for _ in algorithms ]
 
         if profile_algo:
             stats = pstats.Stats(profiler, stream=sys.stdout)
@@ -216,7 +218,7 @@ def show_results_plot(data):
         y = [ d['avgs'][name] for d in data ]
         plt.plot(x_, y, color=color)
 
-    plt.xlabel("Nr of vertices (=2^N)")
+    plt.xlabel("Nr of vertices (=2^x)")
     plt.ylabel("Average runtime (s)")
     plt.legend([ a.__name__ for a in algorithms ])
     plt.title("Average runtime for each algorithm at each game size (d=4)")

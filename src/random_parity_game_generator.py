@@ -109,6 +109,7 @@ def random_game(n,k,j,debug=False,selfloops=True):
     ''' generate a random game with n variables, k priorities and j clauses
     '''
     bdd = make_bdd()  
+    og_j = j
 
     variables = __LETTERS(n)
     (all_vars,variables_) = ([],[])
@@ -132,7 +133,7 @@ def random_game(n,k,j,debug=False,selfloops=True):
     if e != bdd.true: print('lost some vertices?!')
     #/test
     (V,E,O) = __VERTICES(n)
-    Ed =  __EDGES(n,j,4,selfloops)
+    Ed =  __EDGES(n,k,og_j,selfloops)
 
     #print("Variables:" + ", ".join(variables) + "\n", "Vertices: " + V + "\n", "Even: " + E + "\n", "Odd: " + O + "\n", "Edges: " + Ed + "\n")
 
