@@ -77,7 +77,7 @@ def onestep_0(v: BDD, z: BDD, pg: parity_game):
     z_ = pg.bdd.let(pg.substitution_list, even(z, pg))
 
     res = ((pg.even & pg.bdd.quantify(pg.e & z_, pg.variables_, forall=False))
-        | (pg.bdd.quantify(pg.odd & pg.bdd.add_expr('{a} => {b}'.format(a=pg.e, b=z_)), pg.variables_, forall=True)))
+        | (pg.bdd.quantify(pg.odd & (~(pg.e) | z_), pg.variables_, forall=True)))
     return v & res
 
 def even(z: BDD, pg: parity_game):

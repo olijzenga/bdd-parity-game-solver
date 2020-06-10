@@ -28,7 +28,7 @@ import sys, os, random, math, getopt
 from dd.autoref import BDD
 from math import floor
 import logging
-import cProfile, pstats
+from pyinstrument import Profiler
 import matplotlib.pyplot as plt
 
 #
@@ -43,7 +43,7 @@ elif s == 'INFO': log_level = logging.INFO
 else: log_level = logging.INFO
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
-profiler = cProfile.Profile()
+profiler = Profiler()
 
 profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 
@@ -55,7 +55,6 @@ STARTING_GAME_SIZE = 20
 games_per_size = 500
 
 algorithms = [zlk, dfi, fpj]
-profiling = []
 total_solving_times = [ 0 for _ in algorithms ]
 results = [ None for _ in algorithms ]
 games = [ None for _ in algorithms ]
@@ -75,6 +74,9 @@ def run_games():
     global pg
     global plot_db
 
+    if profile_algo:
+        logging.info("Profiling for algorithm " + profile_algo)
+
     print(game_sizes_range)
     for game_size in game_sizes_range:
         d = 4
@@ -93,14 +95,14 @@ def run_games():
                 game = games[i]
 
                 if algorithm.__name__ == profile_algo:
-                    profiler.enable()
+                    profiler.start()
 
                 start_time = process_time()
                 res = algorithm(game)
                 end_time = process_time()
 
                 if algorithm.__name__ == profile_algo:
-                    profiler.disable()
+                    profiler.stop()
 
                 total_solving_times[i] += end_time - start_time
                 results[i] = res
@@ -136,10 +138,9 @@ def run_games():
 
         total_solving_times = [ 0 for _ in algorithms ]
 
-        if profile_algo:
-            stats = pstats.Stats(profiler, stream=sys.stdout)
-            stats.sort_stats('time')
-            stats.print_stats()
+    if profile_algo:
+        logging.info("Showing profiler results:")
+        profiler.output_text(unicode=True, color=True)
 
 def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
       return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
@@ -231,13 +232,15 @@ def show_results_plot(data):
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "p",["n=", "plot"])
+        opts, args = getopt.getopt(sys.argv[1:], "p",["n=", "plot", "profile="])
     except getopt.GetoptError:
         logger.error("Could not get run arguments")
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-p", "--plot"):
             DO_PLOT = True
+        elif opt == "--profile":
+            profile_algo = arg
         elif opt == "--n":
             NR_OF_EXPERIMENTS = int(arg)
 

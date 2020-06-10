@@ -10,6 +10,7 @@ graphviz = "*"
 dd = "*"
 pylint = "*"
 matplotlib = "*"
+pyinstrument = "*"
 
 [requires]
 python_version = "3.6"

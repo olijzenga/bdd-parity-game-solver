@@ -10,14 +10,14 @@ def fpj(pg: parity_game):
     z = pg.prio_even
     j = pg.bdd.false
     u = unjustified(j, pg)
-    while unjustified(j, pg) != pg.bdd.false:
+    while u != pg.bdd.false:
 
         if logger.isEnabledFor(logging.DEBUG):
             logging.debug("\n\n\nnext")
             logging.debug("J: " + pg.bdd_sat(pg.bdd.quantify(j, pg.variables_, forall=False)))
             logging.debug("U(J): " + pg.bdd_sat(u))
 
-        z, j = next(z, j, pg)
+        z, j = next(z, j, u, pg)
         u = unjustified(j, pg)
     
     w0 = z
@@ -26,11 +26,11 @@ def fpj(pg: parity_game):
     s1 = j & pg.odd & w1
     return w0, w1, s0, s1
 
-def next(z: BDD, j: BDD, pg: parity_game):
+def next(z: BDD, j: BDD, u: BDD, pg: parity_game):
     i = 0
-    while (pg.p[i] & unjustified(j, pg)) == pg.bdd.false:
+    while (pg.p[i] & u) == pg.bdd.false:
         i += 1
-    u = pg.p[i] & unjustified(j, pg)
+    u = pg.p[i] & u
 
     if logger.isEnabledFor(logging.DEBUG):
         logging.debug("prio: " + str(i))
@@ -83,20 +83,21 @@ def next(z: BDD, j: BDD, pg: parity_game):
     return z_, j_
 
 def strategy_0(z: BDD, u: BDD, pg: parity_game):
-    even = pg.even & z
-    odd = pg.odd & ~z
-    losing = pg.v & ~(even | odd) # vertices won by the player that does not own it
+    even = u & pg.even & z
+    odd = u & pg.odd & ~z
+    losing = u & ~(even | odd) & pg.v # vertices won by the player that does not own it
 
     z_ = pg.bdd.let(pg.substitution_list, z)
 
-    return (pg.e & even & z_ & u) | (pg.e & odd & (~z_) & u) | (pg.e & losing & u)
+    return (even & z_ & pg.e) | (odd & (~z_) & pg.e) | (losing & pg.e)
+
 ##{v ∈ V0|∃w:(v, w) ∈ E ∧ w ∈ S } ∪ { v ∈ V1| ∀w: (v, w) ∈ E ⇒ w∈S}
 def phi(z: BDD, pg: parity_game):
 
     z_ = pg.bdd.let(pg.substitution_list, z)
 
     res = ((pg.even & pg.bdd.quantify(pg.e & z_, pg.variables_, forall=False))
-        | (pg.odd & pg.bdd.quantify(pg.bdd.add_expr('{a} => {b}'.format(a=pg.e, b=z_)), pg.variables_, forall=True)))
+        | (pg.odd & pg.bdd.quantify(~(pg.e) | z_, pg.variables_, forall=True)))
     return res
 
 def preimage(v: BDD, pg: parity_game):
