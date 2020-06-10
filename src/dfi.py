@@ -25,7 +25,10 @@ def dfi(pg: parity_game):
      
         player = p % 2
         v_p = pg.p[p]
-        v = (v_p & ~z) & f_none(f, pg)
+        #v = (v_p & ~z) & f_none(f, pg)
+        v = v_p & ~z
+        for i in range(p, pg.d + 1):
+            v = v & ~f[i]
 
         os = onestep_0(v, z, pg)
         if player == 0:
@@ -43,7 +46,10 @@ def dfi(pg: parity_game):
             logger.debug("z_: " + pg.bdd_sat(z_))
         
         if z_ != pg.bdd.false:
-            v = prio_lt(p, pg.p, pg) & f_none(f, pg)
+            #v = prio_lt(p, pg.p, pg) & f_none(f, pg)
+            v = prio_lt(p, pg.p, pg)
+            for i in range(pg.d + 1):
+                v = v & ~f[i]
             winning = (v & even(z, pg)) if player == 0 else (v & odd(z, pg))
             f[p] = (v & ~winning) | f[p]
             z = (~winning) & z
