@@ -46,7 +46,7 @@ profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 
 DO_PLOT = False
 PLOT_COLORS = ["green", "red", "blue", "yellow", "black", "purple"]
-NR_OF_EXPERIMENTS = 10
+NR_OF_EXPERIMENTS = 50
 STARTING_GAME_SIZE = 50
 
 games_per_size = 500
