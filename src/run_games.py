@@ -20,7 +20,7 @@
 
 from random_parity_game_generator import random_game
 from parity_game import parity_game
-from dfi import dfi
+from dfi import dfi, dfi_no_freezing
 from zlk import zlk
 from fpj import fpj
 from time import process_time, sleep
@@ -47,11 +47,11 @@ profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 DO_PLOT = False
 PLOT_COLORS = ["green", "red", "blue", "yellow", "black", "purple"]
 NR_OF_EXPERIMENTS = 10
-STARTING_GAME_SIZE = 100
+STARTING_GAME_SIZE = 50
 
 games_per_size = 500
 
-algorithms = [zlk, dfi, fpj]
+algorithms = [zlk, dfi, dfi_no_freezing, fpj]
 total_solving_times = [ 0 for _ in algorithms ]
 results = { a.__name__ : None for a in algorithms }
 games = [ None for _ in algorithms ]
@@ -115,7 +115,7 @@ def run_games():
             text = "seed = {0} n = {1} d = {2} j = {3} | game {4}".format(seed_, nr_vertices_, d_, j_, iteration_)
 
             for i in range(len(algorithms)):
-                text += "| {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
+                text += " | {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
             logger.info(text)
 
             if not compare_results(results, pg):                
