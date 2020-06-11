@@ -40,8 +40,8 @@ def dfi(pg: parity_game):
         z = z | z_
         # Update strategy
         s = s & ~v
-        s = s | (pg.even & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg)))
-        s = s | (pg.odd & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg)))
+        s = s | (v & pg.even & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg)))
+        s = s | (v & pg.odd & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg)))
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("z_: " + pg.bdd_sat(z_))
