@@ -10,6 +10,7 @@ def pbes_to_pg(filename):
     bdd = make_bdd()
 
     result = subprocess.run(['pbes2bdd',filename], stdout=subprocess.PIPE).stdout.decode('ISO-8859-1')
+    print(result)
     l = result. split('--- edges ---')
     e = l[1].strip(). replace("'''",""). replace("\n","")
     

@@ -39,10 +39,7 @@ if s == 'DEBUG': log_level = logging.DEBUG
 elif s == 'INFO': log_level = logging.INFO
 else: log_level = logging.INFO
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.ERROR)
 logger = logging.getLogger(__name__)
-logger.setLevel(log_level)
-
 profiler = Profiler()
 
 profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
@@ -50,13 +47,13 @@ profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 DO_PLOT = False
 PLOT_COLORS = ["green", "red", "blue", "yellow", "black", "purple"]
 NR_OF_EXPERIMENTS = 10
-STARTING_GAME_SIZE = 200
+STARTING_GAME_SIZE = 100
 
 games_per_size = 500
 
 algorithms = [zlk, dfi, fpj]
 total_solving_times = [ 0 for _ in algorithms ]
-results = [ None for _ in algorithms ]
+results = { a.__name__ : None for a in algorithms }
 games = [ None for _ in algorithms ]
 pg = None
 
@@ -79,9 +76,11 @@ def run_games():
 
     print(game_sizes_range)
     for game_size in game_sizes_range:
-        d = 4
+        D = 4
+        J = 16
         for iteration in range(0, games_per_size):
-            pg = random_game(game_size, d, 64, False, False)
+            seed = random.randint(0, 1000000000000)
+            pg = random_game(seed, game_size, D, J, False, False)
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(str(pg))
@@ -105,36 +104,34 @@ def run_games():
                     profiler.stop()
 
                 total_solving_times[i] += end_time - start_time
-                results[i] = res
+                results[algorithm.__name__] = res
                 #game.bdd.collect_garbage()
 
-            nr_vertices_ = str(pow(2, game_size)).rjust(5)
-            d_ = str(d).rjust(5)
+            nr_vertices_ = str(game_size).rjust(5)
+            d_ = str(D).rjust(5)
+            j_ = str(J).rjust(5)
             iteration_ = str(iteration).rjust(5)
-            text = "|V| = {0} d = {1} | game {2}".format(nr_vertices_, d_, iteration_)
+            seed_ = str(seed).rjust(15)
+            text = "seed = {0} n = {1} d = {2} j = {3} | game {4}".format(seed_, nr_vertices_, d_, j_, iteration_)
 
             for i in range(len(algorithms)):
                 text += "| {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
             logger.info(text)
 
-            # sanity checks
-            j = None
-            for i in range(len(algorithms)):
-                result = results[i]
+            if not compare_results(results, pg):                
+                sys.exit()
 
-                if j != None and (results[j][0] != result[0] or results[j][1] != result[1]):
-                    show_results_diff(i, j)
-                    sys.exit()
-                
-                j = i
-                
+            # sanity checks
+            for name in results.keys():
+                result = results[name]               
                 if len(result) == 4:
-                    if not validate_strategy(results[i][0], results[i][1], results[i][2], results[i][3], games[i], algorithms[i].__name__):
-                        show_single_result(i)
+                    if not validate_strategy(result[0], result[1], result[2], result[3], pg, name):
+                        logger.error("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))
+                        show_single_result(result, pg, name)
                         sys.exit()
 
         # Capture results for plotting
-        plot_db.append({ 'd': d, '|V|': game_size, 'avgs': { algorithms[i].__name__ : (total_solving_times[i] / games_per_size) for i in range(len(algorithms)) } })
+        plot_db.append({ 'd': D, '|V|': game_size, 'avgs': { algorithms[i].__name__ : (total_solving_times[i] / games_per_size) for i in range(len(algorithms)) } })
 
         total_solving_times = [ 0 for _ in algorithms ]
 
@@ -142,29 +139,40 @@ def run_games():
         logging.info("Showing profiler results:")
         profiler.output_text(unicode=True, color=True)
 
+def compare_results(results, game):
+    prev = None
+    for name in results.keys():
+        result = results[name]
+
+        if prev != None and (results[prev][0] != result[0] or results[prev][1] != result[1]):
+            show_results_diff(result, name, results[prev], prev, game)
+            return False
+        
+        prev = name
+    return True
+
 def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
       return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
 
-def show_results_diff(i, j):
+def show_results_diff(res0, name0, res1, name1, game):
     logger.error("Error: difference in outcome between algorithms")
+    logger.error("BDD sizes: vertices={0} edges={1} priorities={2}".format(game.v.dag_size, game.e.dag_size, sum([ game.p[prio].dag_size for prio in game.p])))
 
-    logger.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(results[i][0], games[i])), str(bdd_sat_to_hex(results[i][1], games[i]))))
-    logger.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[j].__name__, str(bdd_sat_to_hex(results[j][0], games[i])), str(bdd_sat_to_hex(results[j][1], games[j]))))
-    logger.error("Difference: {0}".format(str(set(bdd_sat_to_hex(results[i][0], games[i])).symmetric_difference(set(bdd_sat_to_hex(results[j][0], games[j]))))))
+    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name0, str(bdd_sat_to_hex(res0[0], game)), str(bdd_sat_to_hex(res0[1], game))))
+    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name1, str(bdd_sat_to_hex(res1[0], game)), str(bdd_sat_to_hex(res1[1], game))))
+    logger.error("Difference: {0}".format(str(set(bdd_sat_to_hex(res0[0], game)).symmetric_difference(set(bdd_sat_to_hex(res1[0], game))))))
 
-    logger.error("Game:\n" + str(pg))
+    logger.error("Game:\n" + str(game))
     pg.show()
 
 # Requires result to have a strategy
-def show_single_result(i):
+def show_single_result(result, pg, name):
+    (w0, w1, s0, s1) = result
 
-    pg = games[i]
-    (w0, w1, s0, s1) = results[i]
-
-    logger.error("Result for algorithm {0}:".format(algorithms[i].__name__))
-    logger.error("{0}:\nW0: {1}\nW1: {2}".format(algorithms[i].__name__, str(bdd_sat_to_hex(w0, pg)), str(bdd_sat_to_hex(w1, pg))))
+    logger.error("Result for algorithm {0}:".format(name))
+    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name, str(bdd_sat_to_hex(w0, pg)), str(bdd_sat_to_hex(w1, pg))))
     logger.error("{0}:\nS0: {1}\nS1: {2}".format(
-        algorithms[i].__name__, 
+        name, 
         str(pg.bdd_sat_edges(s0)),
         str(pg.bdd_sat_edges(s1))
     ))
@@ -173,35 +181,40 @@ def show_single_result(i):
     pg.show()
 
 def validate_strategy(w0: BDD, w1: BDD, s0: BDD, s1: BDD, pg: parity_game, name: str):
-
     if (w0 & pg.even & s0) != s0:
         logger.error("{0}: Strategy for Even does not cover all vertices won and controlled by Even".format(name))
-        logger.error("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.even & w0) & ~s0, pg.variables_)))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.even & w0) & ~s0, pg.variables_)))
         return False
 
     if (w1 & pg.odd & s1) != s1:
         logger.error("{0}: Strategy for Odd does not cover all vertices won and controlled by Odd".format(name))
-        logger.error("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.odd & w1) & ~s1, pg.variables_)))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.odd & w1) & ~s1, pg.variables_)))
         return False
 
     if (~pg.even & s0) != pg.bdd.false:
         logger.error("{0}: Strategy for Even contains moves from vertices controlled by Odd".format(name))
-        logger.error("Bad moves: " + pg.bdd_sat_edges(~pg.even & s0))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Bad moves: " + pg.bdd_sat_edges(~pg.even & s0))
         return False
 
     if (~pg.odd & s1) != pg.bdd.false:
         logger.error("{0}: Strategy for Odd contains moves from vertices controlled by Even".format(name))
-        logger.error("Bad moves: " + pg.bdd_sat_edges(~pg.odd & s1))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Bad moves: " + pg.bdd_sat_edges(~pg.odd & s1))
         return False
 
     if (s0 & pg.bdd.let(pg.substitution_list, w1)) != pg.bdd.false:
         logger.error("{0}: Strategy of Even contains a move to the winning area of Odd".format(name))
-        logger.error("Wrong moves: " + pg.bdd_sat_edges(s0 & pg.bdd.let(pg.substitution_list, w1)))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Wrong moves: " + pg.bdd_sat_edges(s0 & pg.bdd.let(pg.substitution_list, w1)))
         return False
 
     if (s1 & pg.bdd.let(pg.substitution_list, w0)) != pg.bdd.false:
         logger.error("{0}: Strategy of Odd contains a move to the winning area of Even".format(name))
-        logger.error("Wrong moves: " + pg.bdd_sat_edges(s1 & pg.bdd.let(pg.substitution_list, w0)))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Wrong moves: " + pg.bdd_sat_edges(s1 & pg.bdd.let(pg.substitution_list, w0)))
         return False
 
     return True
@@ -231,6 +244,12 @@ def show_results_plot(data):
 
 
 if __name__ == "__main__":
+    print("here")
+
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.ERROR)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(log_level)
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], "p",["n=", "plot", "profile="])
     except getopt.GetoptError:

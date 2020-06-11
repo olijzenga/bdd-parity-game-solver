@@ -18,7 +18,8 @@
 
 from bdd_provider import make_bdd
 from parity_game import parity_game
-import sys, os, random, math
+import sys, os, math
+from random import Random
 from dd.bdd import to_pydot
 
 # GENERATE RANDOM PARITY GAME BY GENERATING RANDOM BDDs
@@ -27,25 +28,25 @@ from dd.bdd import to_pydot
 def __LETTERS(n):
   return ['x%d' %(i) for i in range(0,n)]
 
-def __VERTICES(n):
+def __VERTICES(rng: Random, n):
   letters = __LETTERS(n)
   odd = ['True']
   for l in letters:
-    r = random.uniform(1,8)
+    r = rng.uniform(1,8)
     if r < 2.5: odd.append('~%s' %(l))
     if r >= 2.5 and r < 4: odd. append('%s' %(l))
   ODD = '(%s)' %('&'.join(odd))
   EVEN = '~%s' %(ODD)
   return ('True',EVEN,ODD)
 
-def __PRIORITIES(n,k):
+def __PRIORITIES(rng: Random, n,k):
   letters = __LETTERS(n)
   priorities = {}
   cummulative = ['False']
   for i in range(0,k):
     priority_i = ['True']
     for l in letters:
-      r = random.uniform(1,k)
+      r = rng.uniform(1,k)
       if r < 2.0: priority_i.append('~%s' %(l))
       if r >= 2.0 and r < (3.0): priority_i. append('%s' %(l))
     if i == 0: 
@@ -58,7 +59,7 @@ def __PRIORITIES(n,k):
       priorities[i] = '~(%s | False)' %('|'.join(cummulative))
   return dict(priorities)
 
-def __EDGES(n,k,j,selfloops = True):
+def __EDGES(rng: Random, n,k,j,selfloops = True):
   # 1/j determines the likelihood that a variable may change at all; higher j, lower chance
   # k is the number of clauses
   letters = __LETTERS(n)
@@ -70,10 +71,10 @@ def __EDGES(n,k,j,selfloops = True):
     changed = []
     completion_i = []
     for i in range(len(letters)): # list the variables that *may* act as guards or *may* change; the others cannot
-      if random.uniform(0,j) < 1: changed. append(i) 
+      if rng.uniform(0,j) < 1: changed. append(i) 
     for i in range(len(letters)):
       if i in changed:
-        r = random.uniform(1,6)
+        r = rng.uniform(1,6)
         if r < 2: 
           clause.append('~%s' %(letters[i]))
           completion_i.append('~%s' %(letters[i]))
@@ -81,7 +82,7 @@ def __EDGES(n,k,j,selfloops = True):
           clause. append('%s' %(letters[i]))
           completion_i.append('%s' %(letters[i]))
         b = (r < 4)
-        r = random.uniform(1,6)
+        r = rng.uniform(1,6)
         if r < 2:
           clause.append('~%s' %(letters_[i]))
         if r >= 2 and r < 4: 
@@ -105,11 +106,12 @@ def __EDGES(n,k,j,selfloops = True):
   return ret
 
 
-def random_game(n,k,j,debug=False,selfloops=True):
+def random_game(seed,n,k,j,debug=False,selfloops=True):
     ''' generate a random game with n variables, k priorities and j clauses
     '''
     bdd = make_bdd()  
     og_j = j
+    rng = Random(seed)
 
     variables = __LETTERS(n)
     (all_vars,variables_) = ([],[])
@@ -118,7 +120,7 @@ def random_game(n,k,j,debug=False,selfloops=True):
         all_vars.append('%s'%(var))
         all_vars.append('%s_'%(var))
     bdd. declare(*all_vars)
-    p, Priorities = __PRIORITIES(n,k), {}
+    p, Priorities = __PRIORITIES(rng,n,k), {}
     for i in p:
         if debug: print('p[i] = %s' %(p[i]))
         e = bdd.add_expr('True & %s' %(p[i]))
@@ -132,8 +134,8 @@ def random_game(n,k,j,debug=False,selfloops=True):
                 if Priorities[i] & Priorities[j] != bdd.false: print('grmbl')
     if e != bdd.true: print('lost some vertices?!')
     #/test
-    (V,E,O) = __VERTICES(n)
-    Ed =  __EDGES(n,k,og_j,selfloops)
+    (V,E,O) = __VERTICES(rng,n)
+    Ed =  __EDGES(rng,n,k,og_j,selfloops)
 
     #print("Variables:" + ", ".join(variables) + "\n", "Vertices: " + V + "\n", "Even: " + E + "\n", "Odd: " + O + "\n", "Edges: " + Ed + "\n")
 

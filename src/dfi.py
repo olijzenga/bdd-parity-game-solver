@@ -26,6 +26,7 @@ def dfi(pg: parity_game):
         player = p % 2
         v_p = pg.p[p]
         #v = (v_p & ~z) & f_none(f, pg)
+        # This re-ordering improves performance
         v = v_p & ~z
         for i in range(p, pg.d + 1):
             v = v & ~f[i]
@@ -47,6 +48,7 @@ def dfi(pg: parity_game):
         
         if z_ != pg.bdd.false:
             #v = prio_lt(p, pg.p, pg) & f_none(f, pg)
+            # This reordering improves performance
             v = prio_lt(p, pg.p, pg)
             for i in range(pg.d + 1):
                 v = v & ~f[i]
