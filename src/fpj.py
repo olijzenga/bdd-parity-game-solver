@@ -108,7 +108,7 @@ def xor(a: BDD, b: BDD):
     return (a & ~b) | (~a & b)
 
 def unjustified(j: BDD, pg: parity_game):
-    return pg.v & ~pg.bdd.quantify(j, pg.variables_, forall=False)
+    return  pg.v & ~pg.bdd.quantify(j, pg.variables_, forall=False)
 
 # Set of vertices from which x can be reached over edges in j
 def reaches(j: BDD, x: BDD, pg: parity_game):

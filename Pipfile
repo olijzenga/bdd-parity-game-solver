@@ -7,10 +7,12 @@ verify_ssl = true
 
 [packages]
 graphviz = "*"
-dd = "*"
 pylint = "*"
 matplotlib = "*"
 pyinstrument = "*"
+line-profiler = "*"
+Cython = "*"
+dd = "*"
 
 [requires]
 python_version = "3.6"

@@ -236,7 +236,7 @@ class parity_game:
         self.e = self.e & ~A & ~A_
         p_ = { i : self.p[i] & ~A for i in self.p if self.p[i] & ~A != self.bdd.false}
         self.p = p_
-        self.bdd.collect_garbage()
+        #self.bdd.collect_garbage()
 
 # Convert a variable assignment to a boolean expression
 def sat_to_expr(sat: dict):

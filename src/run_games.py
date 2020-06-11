@@ -34,23 +34,23 @@ import matplotlib.pyplot as plt
 #
 #   Initialization code
 #
-
-logger = logging.getLogger(__name__)
-
 s = os.environ.get('LOG_LEVEL', 'INFO')
 if s == 'DEBUG': log_level = logging.DEBUG
 elif s == 'INFO': log_level = logging.INFO
 else: log_level = logging.INFO
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.ERROR)
+logger = logging.getLogger(__name__)
+logger.setLevel(log_level)
+
 profiler = Profiler()
 
 profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 
 DO_PLOT = False
 PLOT_COLORS = ["green", "red", "blue", "yellow", "black", "purple"]
-NR_OF_EXPERIMENTS = 30
-STARTING_GAME_SIZE = 20
+NR_OF_EXPERIMENTS = 10
+STARTING_GAME_SIZE = 200
 
 games_per_size = 500
 
@@ -87,8 +87,8 @@ def run_games():
                 logger.debug(str(pg))
 
             games = [ pg.copy() for _ in algorithms ]
-            for game in games: game.bdd.collect_garbage()
-            pg.bdd.collect_garbage()
+            #for game in games: game.bdd.collect_garbage()
+            #pg.bdd.collect_garbage()
 
             for i in range(len(algorithms)):
                 algorithm = algorithms[i]
@@ -106,7 +106,7 @@ def run_games():
 
                 total_solving_times[i] += end_time - start_time
                 results[i] = res
-                game.bdd.collect_garbage()
+                #game.bdd.collect_garbage()
 
             nr_vertices_ = str(pow(2, game_size)).rjust(5)
             d_ = str(d).rjust(5)
