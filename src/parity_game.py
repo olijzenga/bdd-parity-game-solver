@@ -1,4 +1,5 @@
-from dd.autoref import BDD
+from dd.cudd import BDD
+from bdd_provider import make_bdd
 from graphviz import Source
 
 class parity_game:
@@ -35,8 +36,8 @@ class parity_game:
         self.p = p
         self.d = max(p)
 
-        self.prio_even = bdd.add_expr('False')
-        self.prio_odd = bdd.add_expr('False')
+        self.prio_even = bdd.false
+        self.prio_odd = bdd.false
 
         # Build a BDD for deciding 
         for prio in p:
@@ -155,8 +156,19 @@ class parity_game:
         with open(filename, "w") as text_file:
             print(res, file=text_file)
 
-    def copy(self):
-        c = parity_game(self.bdd, self.variables, self.variables_, self.v, self.e, self.even, self.odd, self.p)
+    def copy(self, deep=False):
+        if deep:
+            bdd = make_bdd()
+            bdd.declare(*self.variables)
+            bdd.declare(*self.variables_)
+            v = self.bdd.copy(self.v, bdd)
+            e = self.bdd.copy(self.e, bdd)
+            even = self.bdd.copy(self.even, bdd)
+            odd = self.bdd.copy(self.odd, bdd)
+            p = { prio : self.bdd.copy(self.p[prio], bdd) for prio in self.p.keys() }
+            c = parity_game(bdd, self.variables, self.variables_, v, e, even, odd, p)
+        else:
+            c = parity_game(self.bdd, self.variables, self.variables_, self.v, self.e, self.even, self.odd, self.p)
         return c
 
     def has_successor (self, U):

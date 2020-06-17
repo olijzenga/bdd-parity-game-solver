@@ -59,7 +59,7 @@ def __PRIORITIES(rng: Random, n,k):
       priorities[i] = '~(%s | False)' %('|'.join(cummulative))
   return dict(priorities)
 
-def __EDGES(rng: Random, n,k,j,selfloops = True):
+def __EDGES(rng: Random, n,k,j,selfloops = False):
   # 1/j determines the likelihood that a variable may change at all; higher j, lower chance
   # k is the number of clauses
   letters = __LETTERS(n)

@@ -30,6 +30,7 @@ from math import floor
 import logging
 from pyinstrument import Profiler
 import matplotlib.pyplot as plt
+from bdd_provider import make_bdd
 
 #
 #   Initialization code
@@ -47,11 +48,15 @@ profile_algo = os.environ.get('PROFILE', '') # Name of the algorithm to profile
 DO_PLOT = False
 PLOT_COLORS = ["green", "red", "blue", "yellow", "black", "purple"]
 NR_OF_EXPERIMENTS = 50
-STARTING_GAME_SIZE = 50
+STARTING_GAME_SIZE = 20
+GAME_STEP_SIZE = 1
 
-games_per_size = 500
+games_per_size = 200
 
-algorithms = [zlk, dfi, dfi_no_freezing, fpj]
+def dfi_nf(pg): return dfi_no_freezing(pg, strategy=True)
+def dfi_nf_ns(pg): return dfi_no_freezing(pg, strategy=False)
+#algorithms = [zlk, dfi_no_freezing, dfi_nf_ns, dfi, fpj]
+algorithms = [zlk, dfi, dfi_nf, dfi_nf_ns, fpj]
 total_solving_times = [ 0 for _ in algorithms ]
 results = { a.__name__ : None for a in algorithms }
 games = [ None for _ in algorithms ]
@@ -76,16 +81,17 @@ def run_games():
 
     print(game_sizes_range)
     for game_size in game_sizes_range:
-        D = 4
+        D = 12
         J = 16
         for iteration in range(0, games_per_size):
             seed = random.randint(0, 1000000000000)
-            pg = random_game(seed, game_size, D, J, False, False)
+            pg = random_game(seed, game_size, D, J, debug=False, selfloops=False)
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(str(pg))
 
-            games = [ pg.copy() for _ in algorithms ]
+            # Pseudorandom generate the same game so we have separate BDDs for each algorithm.
+            games = [ pg.copy(deep=True) for _ in algorithms ]
             #for game in games: game.bdd.collect_garbage()
             #pg.bdd.collect_garbage()
 
@@ -104,7 +110,7 @@ def run_games():
                     profiler.stop()
 
                 total_solving_times[i] += end_time - start_time
-                results[algorithm.__name__] = res
+                results[algorithm.__name__] = { "res": res, "game": game }
                 #game.bdd.collect_garbage()
 
             nr_vertices_ = str(game_size).rjust(5)
@@ -118,16 +124,18 @@ def run_games():
                 text += " | {0} time: {1}".format(algorithms[i].__name__, ("%10.3f"%total_solving_times[i]).rjust(10))
             logger.info(text)
 
-            if not compare_results(results, pg):                
+            if not compare_results(results):                
                 sys.exit()
 
             # sanity checks
             for name in results.keys():
-                result = results[name]               
-                if len(result) == 4:
-                    if not validate_strategy(result[0], result[1], result[2], result[3], pg, name):
-                        logger.error("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))
-                        show_single_result(result, pg, name)
+                result = results[name]
+                res = result["res"]
+                game = result["game"]             
+                if len(res) == 4:
+                    if not validate_strategy(res[0], res[1], res[2], res[3], game, name):
+                        logger.error("BDD sizes: vertices={0} edges={1} priorities={2}".format(game.v.dag_size, game.e.dag_size, sum([ game.p[prio].dag_size for prio in game.p])))
+                        show_single_result(res, game, name)
                         sys.exit()
 
         # Capture results for plotting
@@ -139,14 +147,26 @@ def run_games():
         logging.info("Showing profiler results:")
         profiler.output_text(unicode=True, color=True)
 
-def compare_results(results, game):
+def compare_results(results):
+    bdd = make_bdd()
+    if results:
+        g = results[list(results.keys())[0]]["game"]
+        bdd.declare(*g.variables)
+        bdd.declare(*g.variables_)
+
     prev = None
     for name in results.keys():
         result = results[name]
+        res = result["res"]
+        game = result["game"]
 
-        if prev != None and (results[prev][0] != result[0] or results[prev][1] != result[1]):
-            show_results_diff(result, name, results[prev], prev, game)
-            return False
+        if prev != None:
+            result_ = results[prev]
+            res_ = result_["res"]
+            game_ = result_["game"]
+            if game_.bdd.copy(res_[0], bdd) != game.bdd.copy(res[0], bdd) or game_.bdd.copy(res_[1], bdd) != game.bdd.copy(res[1], bdd):
+                show_results_diff(res, name, game, res_, prev, game_)
+                return False
         
         prev = name
     return True
@@ -154,15 +174,15 @@ def compare_results(results, game):
 def bdd_sat_to_hex(bdd: BDD, pg: parity_game):
       return [pg.sat_to_hex(sat) for sat in pg.bdd.pick_iter(bdd, care_vars=pg.variables)]
 
-def show_results_diff(res0, name0, res1, name1, game):
+def show_results_diff(res0, name0, game0, res1, name1, game1):
     logger.error("Error: difference in outcome between algorithms")
-    logger.error("BDD sizes: vertices={0} edges={1} priorities={2}".format(game.v.dag_size, game.e.dag_size, sum([ game.p[prio].dag_size for prio in game.p])))
+    logger.error("BDD sizes: vertices={0} edges={1} priorities={2}".format(game0.v.dag_size, game0.e.dag_size, sum([ game0.p[prio].dag_size for prio in game0.p])))
 
-    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name0, str(bdd_sat_to_hex(res0[0], game)), str(bdd_sat_to_hex(res0[1], game))))
-    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name1, str(bdd_sat_to_hex(res1[0], game)), str(bdd_sat_to_hex(res1[1], game))))
-    logger.error("Difference: {0}".format(str(set(bdd_sat_to_hex(res0[0], game)).symmetric_difference(set(bdd_sat_to_hex(res1[0], game))))))
+    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name0, str(bdd_sat_to_hex(res0[0], game0)), str(bdd_sat_to_hex(res0[1], game0))))
+    logger.error("{0}:\nW0: {1}\nW1: {2}".format(name1, str(bdd_sat_to_hex(res1[0], game1)), str(bdd_sat_to_hex(res1[1], game1))))
+    logger.error("Difference: {0}".format(str(set(bdd_sat_to_hex(res0[0], game0)).symmetric_difference(set(bdd_sat_to_hex(res1[0], game1))))))
 
-    logger.error("Game:\n" + str(game))
+    logger.debug("Game:\n" + str(game0))
     pg.show()
 
 # Requires result to have a strategy
@@ -181,13 +201,13 @@ def show_single_result(result, pg, name):
     pg.show()
 
 def validate_strategy(w0: BDD, w1: BDD, s0: BDD, s1: BDD, pg: parity_game, name: str):
-    if (w0 & pg.even & s0) != s0:
+    if (w0 & pg.even & pg.bdd.quantify(s0, pg.variables_)) != (w0 & pg.even):
         logger.error("{0}: Strategy for Even does not cover all vertices won and controlled by Even".format(name))
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.even & w0) & ~s0, pg.variables_)))
         return False
 
-    if (w1 & pg.odd & s1) != s1:
+    if (w1 & pg.odd & pg.bdd.quantify(s1, pg.variables_)) != (w1 & pg.odd):
         logger.error("{0}: Strategy for Odd does not cover all vertices won and controlled by Odd".format(name))
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("Missing vertices: " + pg.bdd_sat(pg.bdd.quantify((pg.odd & w1) & ~s1, pg.variables_)))
@@ -244,16 +264,14 @@ def show_results_plot(data):
 
 
 if __name__ == "__main__":
-    print("here")
-
     logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.ERROR)
     logger = logging.getLogger(__name__)
     logger.setLevel(log_level)
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "p",["n=", "plot", "profile="])
+        opts, args = getopt.getopt(sys.argv[1:], "p",["n=", "plot", "profile=", "step=", "start="])
     except getopt.GetoptError:
-        logger.error("Could not get run arguments")
+        logger.error("Invalid run arguments")
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-p", "--plot"):
@@ -262,8 +280,12 @@ if __name__ == "__main__":
             profile_algo = arg
         elif opt == "--n":
             NR_OF_EXPERIMENTS = int(arg)
+        elif opt == "--step":
+            GAME_STEP_SIZE = int(arg)
+        elif opt == "--start":
+            STARTING_GAME_SIZE = int(arg)
 
-    game_sizes_range = range(STARTING_GAME_SIZE, STARTING_GAME_SIZE + NR_OF_EXPERIMENTS)
+    game_sizes_range = range(STARTING_GAME_SIZE, STARTING_GAME_SIZE + NR_OF_EXPERIMENTS, GAME_STEP_SIZE)
 
     logger.info("Running {0} experiments".format(NR_OF_EXPERIMENTS))
     logger.info("Graph plotting {0}".format("enabled" if DO_PLOT else "disabled"))
