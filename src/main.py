@@ -3,6 +3,7 @@ from fpj import fpj
 from dfi import dfi
 from zlk import zlk
 from pbes_to_pg import pbes_to_pg
+from pg import read_parity_game as read_oink, oink_to_sym
 import logging
 import os
 from time import process_time, time
@@ -25,12 +26,12 @@ J = 8   # J 'clauses' (edges)
 SEED = None
 
 GAME_SRC = None
-PBES_SRC = None
+PG_RESOURCE = None
 
 ALGORITHMS = []
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], [],["random", "pbes", "dfi", "fpj", "zlk", "source=", "seed=", "n=", "d=", "j="])
+    opts, args = getopt.getopt(sys.argv[1:], [],["random", "pbes", "oink", "dfi", "fpj", "zlk", "source=", "seed=", "n=", "d=", "j="])
 except getopt.GetoptError as e:
     logger.error(e)
     logger.error("Could not get run arguments")
@@ -44,6 +45,10 @@ for opt, arg in opts:
         if GAME_SRC:
             raise Exception("Only one game source allowed at a time")
         GAME_SRC = "pbes"
+    elif opt == "--oink":
+        if GAME_SRC:
+            raise Exception("Only one game source allowed at a time")
+        GAME_SRC = "oink"
     elif opt == "--zlk":
         ALGORITHMS.append(zlk)
     elif opt == "--dfi":
@@ -51,9 +56,9 @@ for opt, arg in opts:
     elif opt == "--fpj":
         ALGORITHMS.append(fpj)
     elif opt == "--source":
-        if not GAME_SRC == "pbes":
-            raise Exception("--pbes flag not set")
-        PBES_SRC = arg
+        if not GAME_SRC in ["pbes", "oink"]:
+            raise Exception("pbes or oink flag not set")
+        PG_RESOURCE = arg
     elif opt == "--seed":
         if not GAME_SRC == "random":
             raise Exception("--random flag not set")
@@ -71,17 +76,21 @@ for opt, arg in opts:
             raise Exception("--random flag not set")
         J = int(arg)
 
-    if GAME_SRC == "pbes" and not PBES_SRC:
-        raise Exception("Game source set to pbes but no file provided")
+if GAME_SRC in ["pbes", "oink"] and not PG_RESOURCE:
+    raise Exception("Game source set to file, but resource not provided")
 
-    if GAME_SRC == "pbes":
-        raise Exception("PBES support not implemented")
+if GAME_SRC == "pbes":
+    raise Exception("PBES support not implemented")
 
 if GAME_SRC == "random":
     if not SEED:
         SEED = time() * 256
     logger.info("Random game with seed {0}, N {1}, D {2} J {3}".format(SEED, N, D, J))
     pg = random_game(SEED, N, D, J, False, False)
+
+if GAME_SRC == "oink":
+    pg = read_oink(PG_RESOURCE)
+    pg = oink_to_sym(pg)
 
 logger.info("Parity game properties:")
 logger.info("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))

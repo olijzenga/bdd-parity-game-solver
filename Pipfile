@@ -13,6 +13,8 @@ pyinstrument = "*"
 line-profiler = "*"
 Cython = "*"
 dd = "*"
+networkx = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.6"

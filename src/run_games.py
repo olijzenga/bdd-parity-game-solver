@@ -51,7 +51,7 @@ NR_OF_EXPERIMENTS = 50
 STARTING_GAME_SIZE = 20
 GAME_STEP_SIZE = 1
 
-games_per_size = 200
+games_per_size = 500
 
 def dfi_nf(pg): return dfi_no_freezing(pg, strategy=True)
 def dfi_nf_ns(pg): return dfi_no_freezing(pg, strategy=False)
@@ -81,7 +81,7 @@ def run_games():
 
     print(game_sizes_range)
     for game_size in game_sizes_range:
-        D = 12
+        D = 4
         J = 16
         for iteration in range(0, games_per_size):
             seed = random.randint(0, 1000000000000)
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         elif opt == "--start":
             STARTING_GAME_SIZE = int(arg)
 
-    game_sizes_range = range(STARTING_GAME_SIZE, STARTING_GAME_SIZE + NR_OF_EXPERIMENTS, GAME_STEP_SIZE)
+    game_sizes_range = range(STARTING_GAME_SIZE, STARTING_GAME_SIZE + NR_OF_EXPERIMENTS*GAME_STEP_SIZE, GAME_STEP_SIZE)
 
     logger.info("Running {0} experiments".format(NR_OF_EXPERIMENTS))
     logger.info("Graph plotting {0}".format("enabled" if DO_PLOT else "disabled"))

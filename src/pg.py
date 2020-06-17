@@ -1,7 +1,10 @@
 import networkx as nx
 import numpy as np
+import math
 import re
 import sys
+from parity_game import parity_game
+from bdd_provider import make_bdd
 
 class ParityGame(object):
     def __init__(self, nodecountOrParityGame, graph=None):
@@ -109,7 +112,7 @@ def read_parity_game(path, verbose=False):
         with open(path, 'r') as f:
             txt = f.read()
     except Exception as e:
-        txt = path
+        raise e
 
     f = (s for s in txt.split("\n"))
 
@@ -152,3 +155,65 @@ def acquire_parity_game():
     else:
         G = read_parity_game(sys.stdin.read())
     return G
+
+def oink_to_sym(pg: ParityGame):
+    
+    bdd = make_bdd()
+    nodecount = len(pg.graph)
+    size = math.ceil(math.log(nodecount, 2))
+
+    variables = [ "x" + str(x) for x in range(size) ]
+    variables_ = [ "x" + str(x) + "_" for x in range(size) ]
+
+    bdd.declare(*variables)
+    bdd.declare(*variables_)
+
+    def v_to_expr(v: int, successor=False):
+        binary = [ bool(v & (1<<n)) for n in range(size) ]
+        s = ""
+        for i in range(len(binary)):
+            if binary[i]:
+                if successor:
+                    s += "&" + variables_[i]
+                else:
+                    s += "&" + variables[i]
+            else:
+                if successor:
+                    s += "&~" + variables_[i]
+                else:
+                    s += "&~" + variables[i]
+        return s[1:]
+
+    # Declare vertices
+    if math.log(nodecount, 2) != size:
+        raise Exception("Node count other than 2^x currently not supported")
+    else:
+        v = bdd.true
+
+    # Declare edges
+    e = bdd.false
+    for edge in pg.edges():
+        s = v_to_expr(edge[0]) + "&" + v_to_expr(edge[1], successor=True)
+        e = e | bdd.add_expr(s)
+
+    # Declare priorities
+    priorities = pg.priorities()
+    p = { prio : bdd.false for prio in range(max(priorities) + 1) }
+    even = bdd.false
+    odd = bdd.false
+
+    for i in range(nodecount):
+        # Set priority
+        expr = bdd.add_expr(v_to_expr(i))
+        prio = int(priorities[i])
+
+        p[prio] = p[prio] | expr
+
+        # Set owner
+        if pg.getOwner(i) == 0:
+            even = even | expr
+        else:
+            odd = odd | expr
+
+    return parity_game(bdd, variables, variables_, v, e, even, odd, p)
+    
