@@ -126,16 +126,10 @@ def reaches(j: BDD, x: BDD, pg: parity_game):
         v_next = pg.bdd.let(pg.substitution_list, v)
         return pg.bdd.quantify(v_next & e, pg.variables_, forall = False)
 
-    # pre = x | preimage(x, j)
-    # pre_ = preimage(pre, j)
-    # while (pre_ & ~pre) != pg.bdd.false:
-    #     pre = pre | pre_
-    #     pre_ = preimage(pre_, j)
-
-    frontier = preimage(x, j)
-    while (frontier & ~x) != pg.bdd.false:
-        frontier = preimage(x,j)
-        x = x | frontier
+    x_ = pg.bdd.false
+    while x_ != x:
+        x_ = x
+        x = x | preimage(x, j)
 
     return x
 

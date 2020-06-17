@@ -82,7 +82,6 @@ if GAME_SRC == "random":
         SEED = time() * 256
     logger.info("Random game with seed {0}, N {1}, D {2} J {3}".format(SEED, N, D, J))
     pg = random_game(SEED, N, D, J, False, False)
-    pg1 = random_game(SEED, N, D, J, False, False)
 
 logger.info("Parity game properties:")
 logger.info("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))
@@ -90,26 +89,27 @@ logger.info("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_s
 res = {}
 for algorithm in ALGORITHMS:
     name = algorithm.__name__
-    game = pg.copy()
+    game = pg.copy(deep=True)
     start = process_time()
     result = algorithm(game)
     end = process_time()
 
-    res[name] = { "time": end - start, "result": result }
+    res[name] = { "time": end - start, "res": result, "game": game }
 
 logging.info(", ".join([ "{0}: {1}".format(name, "%10.3f"%(res[name]["time"])) for name in res ]))
 
 logging.info("Comparing results...")
-if not compare_results({ r : res[r]["result"] for r in res }, pg):
+if not compare_results({ r : res[r] for r in res }):
     sys.exit()
 logging.info("Winning area consistent accross all algorithms")
 
 logging.info("Validating strategies...")
 bad_strat = False
 for name in res.keys():
-    r = res[name]["result"]
+    r = res[name]["res"]
+    game = res[name]["game"]
     if len(r) == 4:
-        if not validate_strategy(r[0], r[1], r[2], r[3], pg, name):
+        if not validate_strategy(r[0], r[1], r[2], r[3], game, name):
             bad_strat = True
 
 if bad_strat:
