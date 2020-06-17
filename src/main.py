@@ -16,10 +16,6 @@ if s == 'DEBUG': log_level = logging.DEBUG
 elif s == 'INFO': log_level = logging.INFO
 else: log_level = logging.INFO
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.setLevel(log_level)
-
 N = 50    # 2^N vertices
 D = 4    # K priorities
 J = 8   # J 'clauses' (edges)
@@ -27,14 +23,15 @@ SEED = None
 
 GAME_SRC = None
 PG_RESOURCE = None
+QUIET_MODE = False
 
 ALGORITHMS = []
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], [],["random", "pbes", "oink", "dfi", "fpj", "zlk", "source=", "seed=", "n=", "d=", "j="])
+    opts, args = getopt.getopt(sys.argv[1:], [],["random", "pbes", "oink", "dfi", "dfi-ns", "fpj", "zlk", "source=", "seed=", "n=", "d=", "j=", "quiet"])
 except getopt.GetoptError as e:
-    logger.error(e)
-    logger.error("Could not get run arguments")
+    print(e)
+    print("Could not get run arguments")
     sys.exit(2)
 for opt, arg in opts:
     if opt == "--random":
@@ -53,6 +50,9 @@ for opt, arg in opts:
         ALGORITHMS.append(zlk)
     elif opt == "--dfi":
         ALGORITHMS.append(dfi)
+    elif opt == "--dfi-ns":
+        def dfi_ns(pg): return dfi(pg, strategy=False)
+        ALGORITHMS.append(dfi_ns)
     elif opt == "--fpj":
         ALGORITHMS.append(fpj)
     elif opt == "--source":
@@ -75,12 +75,23 @@ for opt, arg in opts:
         if not GAME_SRC == "random":
             raise Exception("--random flag not set")
         J = int(arg)
+    elif opt == "--quiet":
+        QUIET_MODE=True
 
 if GAME_SRC in ["pbes", "oink"] and not PG_RESOURCE:
     raise Exception("Game source set to file, but resource not provided")
 
 if GAME_SRC == "pbes":
     raise Exception("PBES support not implemented")
+
+if QUIET_MODE:
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.FATAL)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.FATAL)
+else:
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(log_level)
 
 if GAME_SRC == "random":
     if not SEED:
@@ -89,8 +100,8 @@ if GAME_SRC == "random":
     pg = random_game(SEED, N, D, J, False, False)
 
 if GAME_SRC == "oink":
-    pg = read_oink(PG_RESOURCE)
-    pg = oink_to_sym(pg)
+    oink_pg = read_oink(PG_RESOURCE)
+    pg = oink_to_sym(oink_pg)
 
 logger.info("Parity game properties:")
 logger.info("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))
@@ -99,13 +110,11 @@ res = {}
 for algorithm in ALGORITHMS:
     name = algorithm.__name__
     game = pg.copy(deep=True)
-    start = process_time()
+    start = time()
     result = algorithm(game)
-    end = process_time()
+    end = time()
 
     res[name] = { "time": end - start, "res": result, "game": game }
-
-logging.info(", ".join([ "{0}: {1}".format(name, "%10.3f"%(res[name]["time"])) for name in res ]))
 
 logging.info("Comparing results...")
 if not compare_results({ r : res[r] for r in res }):
@@ -125,6 +134,12 @@ if bad_strat:
     logging.error("Invalid strategy detected")
     sys.exit()
 logging.info("Success")
+
+out = ", ".join([ "{0}: {1}".format(name, "%14.6f"%(res[name]["time"])) for name in res ])
+if not GAME_SRC == "oink":
+    print(out)
+else:
+    print(out + ", nr of vertices: {0}, stats:{1}".format(str(len(oink_pg.nodes())).rjust(10), game.bdd.statistics(exact_node_count=True)))
 
 #logger.info(pg.bdd_sat(res[0]))
 #logger.info(pg.bdd_sat(res[1]))

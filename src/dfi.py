@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 debug = logger.isEnabledFor(logging.DEBUG)
 
 #@profile
-def dfi(pg: parity_game):
+def dfi(pg: parity_game, strategy=True):
     
     z = pg.bdd.false                                # No vertices are distractions
     f = { p : pg.bdd.false for p in pg.p.keys() }   # No vertices are frozen
@@ -41,9 +41,10 @@ def dfi(pg: parity_game):
 
         z = z | z_
         # Update strategy
-        s = s & ~v
-        s = s | (v & pg.even & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg)))
-        s = s | (v & pg.odd & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg)))
+        if strategy:
+            s = s & ~v
+            s = s | (v & pg.even & pg.e & pg.bdd.let(pg.substitution_list, even(z, pg)))
+            s = s | (v & pg.odd & pg.e & pg.bdd.let(pg.substitution_list, odd(z, pg)))
 
         if debug:
             logger.debug("z_: " + pg.bdd_sat(z_))
@@ -69,7 +70,10 @@ def dfi(pg: parity_game):
             #     f[p] = f[p] & ~pg.p[i]
             p += 1
 
-    return even(z, pg), odd(z, pg), even(z, pg) & pg.even & s, odd(z, pg) & pg.odd & s
+    if strategy:
+        return even(z, pg), odd(z, pg), even(z, pg) & pg.even & s, odd(z, pg) & pg.odd & s
+    else:
+        return even(z, pg), odd(z, pg)
 
 #@profile
 def dfi_no_freezing(pg: parity_game, strategy=True):
@@ -125,7 +129,6 @@ def dfi_no_freezing(pg: parity_game, strategy=True):
         return even(z, pg), odd(z, pg), even(z, pg) & pg.even & s, odd(z, pg) & pg.odd & s
     else:
         return even(z, pg), odd(z, pg)
-    #return even(z, pg), odd(z, pg), even(z, pg) & pg.even & s, odd(z, pg) & pg.odd & s
 
 # Returns a bdd of all vertices which are not frozen
 def f_none(f: dict, pg: parity_game):

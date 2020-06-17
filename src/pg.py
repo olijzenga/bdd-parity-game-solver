@@ -5,6 +5,7 @@ import re
 import sys
 from parity_game import parity_game
 from bdd_provider import make_bdd
+import logging
 
 class ParityGame(object):
     def __init__(self, nodecountOrParityGame, graph=None):
@@ -157,6 +158,8 @@ def acquire_parity_game():
     return G
 
 def oink_to_sym(pg: ParityGame):
+
+    logger = logging.getLogger(__name__)
     
     bdd = make_bdd()
     nodecount = len(pg.graph)
@@ -186,7 +189,13 @@ def oink_to_sym(pg: ParityGame):
 
     # Declare vertices
     if math.log(nodecount, 2) != size:
-        raise Exception("Node count other than 2^x currently not supported")
+        logger.info("Warning: using shitty way of supporting vertex counts which are not 2^x, this might take some time")
+        logger.info("Excluding {0} vertices...".format(int(math.pow(2, size)) - nodecount))
+        v = bdd.true
+        # Shitty way of excluding vertices which dont exist with number less than 2^size
+        for i in range(nodecount, int(math.pow(2, size))):
+            v = v & ~ bdd.add_expr(v_to_expr(i))
+
     else:
         v = bdd.true
 
