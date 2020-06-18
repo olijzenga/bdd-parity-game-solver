@@ -12,7 +12,6 @@ matplotlib = "*"
 pyinstrument = "*"
 line-profiler = "*"
 Cython = "*"
-dd = "*"
 networkx = "*"
 numpy = "*"
 
