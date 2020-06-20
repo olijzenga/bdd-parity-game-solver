@@ -33,7 +33,7 @@ except Exception as e:
 
 with open(output_file, 'w') as output:
     # Write csv file header
-    output.write("Set, Algorithm, Time, PG Vertices, Memory (MB), BDD Nodes, Peak Live BDD Nodes, Peak BDD Nodes\n")
+    output.write("Set, Algorithm, Time, PG Vertices, Priorities, Memory (MB), BDD Nodes, Peak Live BDD Nodes, Peak BDD Nodes\n")
     
     #Aggregate csv data
     data = { key : [] for key in benchmarks.values() }
@@ -57,12 +57,12 @@ with open(output_file, 'w') as output:
             if alg in grp:
                 entry = grp[alg]
                 # 2-7
-                for i in range(2,7):
+                for i in range(2,8):
                     entry[i] += float(row[i]) if '.' in row[i] else int(row[i])
                 entry[8] += 1
             else:
                 grp[alg] = [ category, alg ] + ([0]*6) + [1]
-                for i in range(2,7):
+                for i in range(2,8):
                     grp[alg][i] += float(row[i]) if '.' in row[i] else int(row[i])
 
         for line in grp.values():

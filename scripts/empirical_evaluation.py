@@ -12,7 +12,7 @@ ALGORITHMS = ["dfi", "dfi-ns", "fpj", "zlk"]
 
 with open(output_file, 'w') as file:
     # Write table headers
-    file.write("File, Algorithm, Time, PG Vertices, Memory (MB), BDD Nodes, Peak Live BDD Nodes, Peak BDD Nodes\r\n")
+    file.write("File, Algorithm, Time, PG Vertices, Priorities, Memory (MB), BDD Nodes, Peak Live BDD Nodes, Peak BDD Nodes\r\n")
     for file_name in sorted(os.listdir("experiments/syntcomp/")):
         if file_name.endswith(".oink"):
             print("Solving parity game {0}".format(file_name))
@@ -34,6 +34,7 @@ with open(output_file, 'w') as file:
                 line += ", " + algorithm                                    # Algorithm
                 line += ", " + str(float(res.split(",")[0].split(":")[1]))  # Time
                 line += ", " + str(float(res.split(",")[1].split(":")[1]))  # Number of vertices in parity game
+                line += ", " + str(int(res.split(",")[2].split(":")[1]))    # d
                 line += ", " + str(stats["mem"])                            # Current memory usage in MB
                 line += ", " + str(stats["n_nodes"])                        # Current number of live nodes
                 line += ", " + str(stats["peak_live_nodes"])                # Peak number of live nodes

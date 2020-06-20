@@ -139,7 +139,7 @@ out = ", ".join([ "{0}: {1}".format(name, "%14.6f"%(res[name]["time"])) for name
 if not GAME_SRC == "oink":
     print(out)
 else:
-    print(out + ", nr of vertices: {0}, stats:{1}".format(str(len(oink_pg.nodes())).rjust(10), game.bdd.statistics(exact_node_count=True)))
+    print(out + ", nr of vertices: {0}, d: {1}, stats:{2}".format(str(len(oink_pg.nodes())).rjust(10), game.d, game.bdd.statistics(exact_node_count=True)))
 
 #logger.info(pg.bdd_sat(res[0]))
 #logger.info(pg.bdd_sat(res[1]))
