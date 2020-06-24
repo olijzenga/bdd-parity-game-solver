@@ -6,10 +6,11 @@ from pbes_to_pg import pbes_to_pg
 from pg import read_parity_game as read_oink, oink_to_sym
 import logging
 import os
-from time import process_time, time
+from time import process_time, time, sleep
 import getopt, sys
 import random
 from run_games import validate_strategy, compare_results
+import json
 
 s = os.environ.get('LOG_LEVEL', 'INFO')
 if s == 'DEBUG': log_level = logging.DEBUG
@@ -102,6 +103,8 @@ if GAME_SRC == "random":
 if GAME_SRC == "oink":
     oink_pg = read_oink(PG_RESOURCE)
     pg = oink_to_sym(oink_pg)
+    sleep(0.5)
+    stats_start = pg.bdd.statistics(exact_node_count=True)
 
 logger.info("Parity game properties:")
 logger.info("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))
@@ -135,11 +138,12 @@ if bad_strat:
     sys.exit()
 logging.info("Success")
 
-out = ", ".join([ "{0}: {1}".format(name, "%14.6f"%(res[name]["time"])) for name in res ])
 if not GAME_SRC == "oink":
-    print(out)
+    print(", ".join([ "{0}: {1}".format(name, "%14.6f"%(res[name]["time"])) for name in res ]))
 else:
-    print(out + ", nr of vertices: {0}, d: {1}, stats:{2}".format(str(len(oink_pg.nodes())).rjust(10), game.d, game.bdd.statistics(exact_node_count=True)))
+    sleep(1)
+    out = { name : res[name]["time"] for name in res.keys() }
+    print(json.dumps( { "times": out, "nr_of_vertices_pg": str(len(oink_pg.nodes())).rjust(10), "d": game.d, "stats_start": stats_start, "stats_end": game.bdd.statistics(exact_node_count=True) }))
 
 #logger.info(pg.bdd_sat(res[0]))
 #logger.info(pg.bdd_sat(res[1]))
