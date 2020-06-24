@@ -51,6 +51,22 @@ class parity_game:
             if prio not in p:
                 p[prio] = bdd.false
 
+    # Return sum of SAT count of all BDDs
+    def get_sat_count(self):
+        count = 0
+        count += len(list(self.bdd.pick_iter(self.v, care_vars=self.variables)))
+        count += len(list(self.bdd.pick_iter(self.e, care_vars=(self.variables + self.variables_))))
+        count += len(list(self.bdd.pick_iter(self.even, care_vars=self.variables)))
+        count += len(list(self.bdd.pick_iter(self.odd, care_vars=self.variables)))
+        count += sum([ len(list(self.bdd.pick_iter(self.p[prio], care_vars=self.variables))) for prio in self.p.keys() ])
+        count += len(list(self.bdd.pick_iter(self.prio_even, care_vars=self.variables)))
+        count += len(list(self.bdd.pick_iter(self.prio_odd, care_vars=self.variables)))
+
+        return count
+
+    def get_avg_out_deg(self):
+        return  len(list(self.bdd.pick_iter(self.e, care_vars=(self.variables + self.variables_)))) / len(list(self.bdd.pick_iter(self.v, care_vars=self.variables)))
+
     # Convert a SAT value to a hex string for more compact representaton
     def sat_to_hex(self, sat, edge=False):
         res = ""

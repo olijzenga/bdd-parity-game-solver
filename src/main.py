@@ -143,7 +143,7 @@ if not GAME_SRC == "oink":
 else:
     sleep(1)
     out = { name : res[name]["time"] for name in res.keys() }
-    print(json.dumps( { "times": out, "nr_of_vertices_pg": str(len(oink_pg.nodes())).rjust(10), "d": game.d, "stats_start": stats_start, "stats_end": game.bdd.statistics(exact_node_count=True) }))
+    print(json.dumps( { "times": out, "sat_count": game.get_sat_count(), "avg_out_dev": game.get_avg_out_deg(), "nr_of_vertices_pg": str(len(oink_pg.nodes())).rjust(10), "d": game.d, "stats_start": stats_start, "stats_end": game.bdd.statistics(exact_node_count=True) }))
 
 #logger.info(pg.bdd_sat(res[0]))
 #logger.info(pg.bdd_sat(res[1]))

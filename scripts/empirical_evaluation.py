@@ -29,9 +29,9 @@ benchmarks = {
 
 with open(output_file, 'w') as file:
     # Write table headers
-    file.write("Set, File, Algorithm, Time, PG Vertices, Priorities, Start Memory (MB), Start BDD Nodes, Start Peak Live BDD Nodes, Start Peak BDD Nodes, End Memory (MB), End BDD Nodes, End Peak Live BDD Nodes, End Peak BDD Nodes\r\n")
-    for i in range(5):
-        time.sleep(5)
+    file.write("Set, File, Algorithm, Time, PG Vertices, Priorities, Start Memory (MB), Start BDD Nodes, Start Peak Live BDD Nodes, Start Peak BDD Nodes, End Memory (MB), End BDD Nodes, End Peak Live BDD Nodes, End Peak BDD Nodes, SAT count, Avg. out degree\r\n")
+    for i in range(1):
+        time.sleep(0)
         print("Evaluation round {0}".format(i + 1))
         for file_name in os.listdir("experiments/syntcomp/"):
             if file_name.endswith(".oink"):
@@ -70,5 +70,7 @@ with open(output_file, 'w') as file:
                         res["stats_end"]["n_nodes"],                    # Current number of live nodes
                         res["stats_end"]["peak_live_nodes"],            # Peak number of live nodes
                         res["stats_end"]["peak_nodes"],                 # Peak number of nodes
+                        res["sat_count"],                               # SAT count of entire game
+                        res["avg_out_dev"]                              # Average outgoing degree of game
                     ]]) + "\r\n" 
                     file.write(line)
