@@ -1,4 +1,4 @@
-from dd.autoref import BDD
+from dd.cudd import BDD
 from parity_game import parity_game, sat_to_expr
 import logging
 
