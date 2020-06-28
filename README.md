@@ -2,6 +2,8 @@
 
 A BDD-based parity game solver. Implements symbolic fpj, dfi, dfi-ns and zlk. Can run games in pgsolver format, or random games using a crappy internal random game generator which should NOT be used for empirical evaluations. Includes a script for automatically reproducing the emprical evaluation of the published paper on this solver, and exporting results to a CSV file.
 
+Also includes parity games in pgsolver format from the SYNTCOMP2020 _pgame_ track which consists of parity automatons converted to parity games using [knor](https://github.com/trolando/knor). 
+
 ## Setup
 
 Dependencies of this repository can be found in `requirements.txt`. The [dd](https://github.com/tulip-control/dd) BDD package has to be manually installed because installation options are required to include CUDD. Install options cause errors in installing from requirements.txt. A full installation is as follows:
