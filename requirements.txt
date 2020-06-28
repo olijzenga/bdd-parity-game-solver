@@ -3,7 +3,6 @@ astutils==0.0.4
 backcall==0.2.0
 cycler==0.10.0
 Cython==0.29.20
-dd==0.5.5 --install-option="--fetch" --install-option="--cudd"
 decorator==4.4.2
 graphviz==0.14
 ipython==7.15.0
@@ -12,7 +11,6 @@ isort==4.3.21
 jedi==0.17.0
 kiwisolver==1.2.0
 lazy-object-proxy==1.4.3
-line-profiler==3.0.2
 matplotlib==3.2.1
 mccabe==0.6.1
 networkx==2.4

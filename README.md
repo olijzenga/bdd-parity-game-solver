@@ -1,8 +1,20 @@
-# bdd-parity-game-solver
+# BDD Parity Game Solver
 
-A BDD-based parity game solver. Can generate and solve randomly generated parity games represented by BDD's. This repository is work-in-progress, so you will most likely encounter some issues while using this solver.
+A BDD-based parity game solver. Implements symbolic fpj, dfi, dfi-ns and zlk. Can run games in pgsolver format, or random games using a crappy internal random game generator which should NOT be used for empirical evaluations. Includes a script for automatically reproducing the emprical evaluation of the published paper on this solver, and exporting results to a CSV file.
 
-Dependencies of this repository can be found in `requirements.txt`. If there are problems installing the [dd](https://github.com/tulip-control/dd) BDD package, please refer to their repository for installation instructions. If you cannot get CUDD with Cython to work, try the pure Python autoref BDD backend included in the dd package.
+## Setup
+
+Dependencies of this repository can be found in `requirements.txt`. The [dd](https://github.com/tulip-control/dd) BDD package has to be manually installed because installation options are required to include CUDD. Install options cause errors in installing from requirements.txt. A full installation is as follows:
+
+```bash
+$ python -m venv env
+$ source env/bin/activate
+$ pip install -r requirements.txt
+# Manually install dd
+$ pip install dd --install-option="--fetch" --install-option="--cudd"
+```
+
+## Usage
 
 To run a random parity game with e.g. fpj and dfi (available algorithms are dfi, dfi-ns, fpj and zlk):
 ```bash
