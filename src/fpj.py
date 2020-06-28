@@ -8,6 +8,13 @@ debug = logger.isEnabledFor(logging.DEBUG)
 
 #@profile
 def fpj(pg: parity_game):
+    """Symbolic implementation of the FPJ algorithm
+
+    :param pg: parity game instance
+    :type pg: parity_game
+    :return: BDD representing the set of vertices won by either players, and their winning strategy
+    :rtype: (BDD, BDD, BDD, BDD)
+    """
     
     z = pg.prio_even
     j = pg.bdd.false
@@ -30,6 +37,19 @@ def fpj(pg: parity_game):
 
 #@profile
 def next(z: BDD, j: BDD, u: BDD, pg: parity_game):
+    """A monotonic iteration of the FPJ algorithm
+
+    :param z: BDD representing vertices estimated to be won by Even
+    :type z: BDD
+    :param j: BDD representing the justification graph
+    :type j: BDD
+    :param u: BDD representing the set of currently unjustified vertices
+    :type u: BDD
+    :param pg: parity game instance
+    :type pg: parity_game
+    :return: BDDs representing updated Z and J
+    :rtype: (BDD, BDD)
+    """
     i = 0
     while (pg.p[i] & u) == pg.bdd.false:
         i += 1
@@ -87,6 +107,19 @@ def next(z: BDD, j: BDD, u: BDD, pg: parity_game):
 
 #@profile
 def strategy_0(z: BDD, u: BDD, pg: parity_game):
+    """Compute winning moves from U based on estimation Z, and all moves
+    from a vertex in U if said vertex is lost by its owner.
+
+    :param z: BDD representing estimation of vertices won by player Z
+    :type z: BDD
+    :param u: BDD representing vertices from which new moves are computed
+    :type u: BDD
+    :param pg: parity game instance
+    :type pg: parity_game
+    :return: BDD representing to be added to the justification graph.
+    :rtype: BDD
+    """
+
     even = u & pg.even & z
     odd = u & pg.odd & ~z
     losing = u & ~(even | odd) & pg.v # vertices won by the player that does not own it
@@ -98,17 +131,21 @@ def strategy_0(z: BDD, u: BDD, pg: parity_game):
 ##{v ∈ V0|∃w:(v, w) ∈ E ∧ w ∈ S } ∪ { v ∈ V1| ∀w: (v, w) ∈ E ⇒ w∈S}
 #@profile
 def phi(z: BDD, pg: parity_game):
+    """Update the estimate Z by lookahead of 1
+
+    :param z: BDD representing vertices currently estimated to be won by Even
+    :type z: BDD
+    :param pg: parity game instance
+    :type pg: parity_game
+    :return: BDD representing new estimate Z
+    :rtype: BDD
+    """
 
     z_ = pg.bdd.let(pg.substitution_list, z)
 
     res = ((pg.even & pg.bdd.quantify(pg.e & z_, pg.variables_, forall=False))
         | (pg.odd & pg.bdd.quantify(~(pg.e) | z_, pg.variables_, forall=True)))
     return res
-
-#@profile
-def preimage(v: BDD, pg: parity_game):
-    v_next = pg.bdd.let(pg.substitution_list, v)
-    return pg.bdd.quantify(v_next & pg.e, pg.variables_, forall = False)
 
 #@profile
 def xor(a: BDD, b: BDD):
@@ -121,6 +158,17 @@ def unjustified(j: BDD, pg: parity_game):
 # Set of vertices from which x can be reached over edges in j
 #@profile
 def reaches(j: BDD, x: BDD, pg: parity_game):
+    """Compute the set of vertices from which X can be reached with moves consistent with J
+
+    :param j: BDD representing justification graph J
+    :type j: BDD
+    :param x: BDD representing the originating set
+    :type x: BDD
+    :param pg: parity game instance
+    :type pg: parity_game
+    :return: BDD representing vertices from which X can be reached over J
+    :rtype: BDD
+    """
     # Preimage of v using edges in e
     def preimage(v: BDD, e: BDD):
         v_next = pg.bdd.let(pg.substitution_list, v)
@@ -156,6 +204,18 @@ def prio_lt(prio: int, p: dict, pg: parity_game):
 
 #@profile
 def prio_gt(prio: int, p: dict, pg: parity_game):
+    """Returns a BDD representing all vertices with priority greater than _prio_
+
+    :param prio: all selected vertices should have greater priority than prio
+    :type prio: int
+    :param p: dictionary containing BDD's for vertices of each priority
+    :type p: dict
+    :param pg: parity game instance
+    :type pg: parity_game
+    :return: bdd of all vertices with priority greater than or equal to prio
+    :rtype: BDD
+    """
+
     bdd = pg.bdd.false
     for current in p.keys():
         if current > prio:

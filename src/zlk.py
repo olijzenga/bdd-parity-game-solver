@@ -1,6 +1,12 @@
 from parity_game import parity_game
 from dd.autoref import BDD
 
+# zlk implementation by:
+# Sanchez, L., Wesselink, J.W., & Willemse, T.A.C. (2018). BDD-based parity game solving: a comparison of
+# Zielonka's recursive algorithm, priority promotion and fixpoint iteration. (Computer science reports; Vol. 1801).
+# Eindhoven: Technische Universiteit Eindhoven.
+# https://pure.tue.nl/ws/files/92755535/CSR_18_01.pdf
+
 def zlk(pg: parity_game):
     if pg.even | pg.odd == pg.bdd.false:
       return (pg.even, pg.odd)

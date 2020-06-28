@@ -1,26 +1,6 @@
-# (C) 2018 - TECHNISCHE UNIVERSITEIT EINDHOVEN
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED,INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-# FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
-# COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES
-# OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
-# OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-# THIS SOFTWARE IS PART OF THE TU/e COMPUTER SCIENCE REPORT 2018-01
-# Citation for published version:
-#
-# Sanchez, L., Wesselink, J.W., & Willemse, T.A.C. (2018). BDD-based parity game solving: a comparison of
-# Zielonka's recursive algorithm, priority promotion and fixpoint iteration. (Computer science reports; Vol. 1801).
-# Eindhoven: Technische Universiteit Eindhoven.
-# https://pure.tue.nl/ws/files/92755535/CSR_18_01.pdf
-
-
-
 from random_parity_game_generator import random_game
 from parity_game import parity_game
-from dfi import dfi, dfi_no_freezing
+from dfi import dfi
 from zlk import zlk
 from fpj import fpj
 from time import process_time, sleep
@@ -53,10 +33,7 @@ GAME_STEP_SIZE = 1
 
 games_per_size = 500
 
-def dfi_nf(pg): return dfi_no_freezing(pg, strategy=True)
-def dfi_nf_ns(pg): return dfi_no_freezing(pg, strategy=False)
-#algorithms = [zlk, dfi_no_freezing, dfi_nf_ns, dfi, fpj]
-algorithms = [zlk, dfi, dfi_nf, dfi_nf_ns, fpj]
+algorithms = [zlk, dfi, fpj]
 total_solving_times = [ 0 for _ in algorithms ]
 results = { a.__name__ : None for a in algorithms }
 games = [ None for _ in algorithms ]

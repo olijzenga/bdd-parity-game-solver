@@ -6,7 +6,7 @@ from pbes_to_pg import pbes_to_pg
 from pg import read_parity_game as read_oink, oink_to_sym
 import logging
 import os
-from time import process_time, time, sleep
+from time import process_time, time 
 import getopt, sys
 import random
 from run_games import validate_strategy, compare_results
@@ -94,6 +94,7 @@ else:
     logger = logging.getLogger(__name__)
     logger.setLevel(log_level)
 
+# Instantiate the parity game based on its specified source
 if GAME_SRC == "random":
     if not SEED:
         SEED = time() * 256
@@ -103,12 +104,14 @@ if GAME_SRC == "random":
 if GAME_SRC == "oink":
     oink_pg = read_oink(PG_RESOURCE)
     pg = oink_to_sym(oink_pg)
-    sleep(0.5)
-    stats_start = pg.bdd.statistics(exact_node_count=True)
+
+# Store initial BDD statistics. Note that this requires the use of the CUDD backend of the dd package.
+stats_start = pg.bdd.statistics(exact_node_count=True)
 
 logger.info("Parity game properties:")
 logger.info("BDD sizes: vertices={0} edges={1} priorities={2}".format(pg.v.dag_size, pg.e.dag_size, sum([ pg.p[prio].dag_size for prio in pg.p])))
 
+# Run each algorithm and store its results.
 res = {}
 for algorithm in ALGORITHMS:
     name = algorithm.__name__
@@ -119,11 +122,13 @@ for algorithm in ALGORITHMS:
 
     res[name] = { "time": end - start, "res": result, "game": game }
 
+# Cross-validate results, only relevant when multiple algorithms are enabled
 logging.info("Comparing results...")
 if not compare_results({ r : res[r] for r in res }):
     sys.exit()
 logging.info("Winning area consistent accross all algorithms")
 
+# Sanity check all strategies
 logging.info("Validating strategies...")
 bad_strat = False
 for name in res.keys():
@@ -138,12 +143,6 @@ if bad_strat:
     sys.exit()
 logging.info("Success")
 
-if not GAME_SRC == "oink":
-    print(", ".join([ "{0}: {1}".format(name, "%14.6f"%(res[name]["time"])) for name in res ]))
-else:
-    sleep(1)
-    out = { name : res[name]["time"] for name in res.keys() }
-    print(json.dumps( { "times": out, "sat_count": game.get_sat_count(), "avg_out_dev": game.get_avg_out_deg(), "nr_of_vertices_pg": str(len(oink_pg.nodes())).rjust(10), "d": game.d, "stats_start": stats_start, "stats_end": game.bdd.statistics(exact_node_count=True) }))
-
-#logger.info(pg.bdd_sat(res[0]))
-#logger.info(pg.bdd_sat(res[1]))
+# Dump result as JSON. If this script is run with the --quiet option, then this is the only output of the script.
+times = { name : res[name]["time"] for name in res.keys() }
+print(json.dumps( { "times": times, "sat_count": game.get_sat_count(), "avg_out_deg": game.get_avg_out_deg(), "nr_of_vertices_pg": str(len(oink_pg.nodes())).rjust(10), "d": game.d, "stats_start": stats_start, "stats_end": game.bdd.statistics(exact_node_count=True) }))

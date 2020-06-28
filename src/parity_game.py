@@ -2,6 +2,11 @@ from dd.cudd import BDD
 from bdd_provider import make_bdd
 from graphviz import Source
 
+# Parity class which is a slightly altered version of the one used by Sanchez et al:
+# Sanchez, L., Wesselink, J.W., & Willemse, T.A.C. (2018). BDD-based parity game solving: a comparison of
+# Zielonka's recursive algorithm, priority promotion and fixpoint iteration. (Computer science reports; Vol. 1801).
+# Eindhoven: Technische Universiteit Eindhoven.
+# https://pure.tue.nl/ws/files/92755535/CSR_18_01.pdf
 class parity_game:
 
     def __init__ (self, bdd: BDD, variables, variables_, v: BDD, e: BDD, even: BDD, odd: BDD, p):
@@ -110,15 +115,18 @@ class parity_game:
 
         return res
 
+    # Display the parity game using graphviz
     def show(self):
         self.make_dot("output/pg.dot")
         with open("output/pg.dot", "r") as text_file:
             s = Source(text_file.read(), filename="output/dot.png", format="png")
             s.view()
 
+    # Prints the hex representation of each SAT of _bdd_
     def bdd_sat(self, bdd: BDD):
         return ', '.join([self.sat_to_hex(sat) for sat in self.bdd.pick_iter(bdd, self.variables)])
 
+    # Prints the hex representation of each SAT of edges represented by _bdd_
     def bdd_sat_edges(self, bdd: BDD):
         return ', '.join([self.sat_to_hex(sat) + " <==> " + self.sat_to_hex(sat, edge=True) for sat in self.bdd.pick_iter(bdd, care_vars=(self.variables_ + self.variables))])
 
@@ -152,6 +160,7 @@ class parity_game:
 
         return res
 
+    # Build a dot file for this parity game
     def make_dot(self, filename):
         
         data = self.get_repr_data()

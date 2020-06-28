@@ -7,6 +7,9 @@ from parity_game import parity_game
 from bdd_provider import make_bdd
 import logging
 
+# Explicit parity game class provided by Tom van Dijk. Used to convert from explicit to symbolic.
+# This class is used because there is an existing parser for it to read from pgsolver format files.
+# See below this class for the parser.
 class ParityGame(object):
     def __init__(self, nodecountOrParityGame, graph=None):
         if type(nodecountOrParityGame) == int:
@@ -157,6 +160,9 @@ def acquire_parity_game():
         G = read_parity_game(sys.stdin.read())
     return G
 
+# Convert a parity game of type ParityGame to a symbolic parity_game instance
+# This uses a very naive encoding and therefore does not achieve
+# very good compression ratios.
 def oink_to_sym(pg: ParityGame):
 
     logger = logging.getLogger(__name__)
