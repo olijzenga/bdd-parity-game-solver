@@ -1,8 +1,8 @@
 # BDD Parity Game Solver
 
-A BDD-based parity game solver. Implements symbolic fpj, dfi, dfi-ns and zlk. Can run games in pgsolver format, or random games using a crappy internal random game generator which should NOT be used for empirical evaluations. Includes a script for automatically reproducing the emprical evaluation of the published paper on this solver, and exporting results to a CSV file.
+A BDD-based parity game solver. Implements symbolic fpj, dfi, dfi-ns and zlk. Can run games in pgsolver format, or random games using a crappy internal random game generator which should NOT be used for empirical evaluations. Includes a script for automatically reproducing the emprical evaluation of the published paper on this solver, and exporting results to a CSV file (`scripts/empirical.py`). Also includes the output data from our empirical evaluation in the paper (`output/empirical.csv.dist`).
 
-Also includes parity games in pgsolver format from the SYNTCOMP2020 _pgame_ track which consists of parity automatons converted to parity games using [knor](https://github.com/trolando/knor). 
+Also includes parity games in pgsolver format from the SYNTCOMP2020 _pgame_ track which consists of parity automatons converted to parity games using [knor](https://github.com/trolando/knor).
 
 ## Setup
 
